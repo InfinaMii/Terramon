@@ -48,6 +48,7 @@ public class RareCandy : Vitamin
         Main.NewText(
             Language.GetTextValue("Mods.Terramon.Misc.RareCandyUse", data.DisplayName, data.Level),
             Color.White);
+        player.GetModPlayer<TerramonPlayer>().Quests.TrackProgress(new QuestCondition{ UseItem = this.Type, PokemonId = data.ID, PokemonType = Terramon.DatabaseV2.GetPokemon(data.ID).Types[0] });
         
         // Test effect
         CombatText.NewText(player.getRect(), Color.White, $"Lv. {data.Level - 1} > {data.Level}");
