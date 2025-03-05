@@ -1,11 +1,14 @@
 {
-  NPC:
+  Common:
   {
     Transform:
     {
       Width: 26
       Height: 27
     }
+  }
+  NPC:
+  {
     WalkingBehaviour:
     {
       WalkSpeed: 0.9
@@ -14,6 +17,7 @@
     }
     SpawnController:
     {
+      Stage: 2
       Conditions:
       [
         {
@@ -24,5 +28,15 @@
       ]
     }
   }
-  Projectile: {}
+  Projectile:
+  {
+    GenericPet:
+    {
+      WalkSpeedModifier: 0.9
+      FrameCount: 4
+      FrameTime: 9
+      IsClassic: false
+      ExtraStopFrame: 2
+    }
+  }
 }

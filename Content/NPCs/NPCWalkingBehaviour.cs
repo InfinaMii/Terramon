@@ -1,6 +1,4 @@
-using System;
 using Terramon.Core.NPCComponents;
-using Terramon.Helpers;
 
 // ReSharper disable FieldCanBeMadeReadOnly.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -11,12 +9,10 @@ namespace Terramon.Content.NPCs;
 /// <summary>
 ///     A <see cref="NPCComponent" /> for adding basic walking AI to an NPC.
 /// </summary>
-public class NPCWalkingBehaviour : NPCAIComponent
+public sealed class NPCWalkingBehaviour : NPCAIComponent
 {
     private int _collideTimer;
-    public string AnimationType = "StraightForward";
-    public int FrameCount = 2;
-    public int FrameTime = 10;
+    public AnimType AnimationType = AnimType.StraightForward;
     public bool IsClassic = true; //TODO: remove once all classic pokemon sprites are replaced with custom ones
     public int StopFrequency = 225;
     public float WalkSpeed = 1f;
@@ -25,17 +21,9 @@ public class NPCWalkingBehaviour : NPCAIComponent
     private ref float AITimer => ref NPC.ai[1];
     private ref float AIWalkDir => ref NPC.ai[2];
 
-    public override void SetDefaults(NPC npc)
-    {
-        base.SetDefaults(npc);
-        if (!Enabled) return;
-
-        Main.npcFrameCount[npc.type] = FrameCount;
-    }
-
     public override void AI(NPC npc)
     {
-        if (!Enabled) return;
+        if (!Enabled || PlasmaState) return;
         
         // Smooth walking over slopes
         Collision.StepUp(ref NPC.position, ref NPC.velocity, NPC.width, NPC.height, ref NPC.stepSpeed,
@@ -61,7 +49,7 @@ public class NPCWalkingBehaviour : NPCAIComponent
         }
 
         if (NPC.velocity.X != 0)
-            NPC.spriteDirection = NPC.velocity.X > 0 ? 1 : -1;
+            NPC.spriteDirection = (NPC.velocity.X > 0).ToDirectionInt();
 
         if (AITimer != 120) return;
         AIState = (float)ActionState.Walking;
@@ -74,7 +62,7 @@ public class NPCWalkingBehaviour : NPCAIComponent
         switch (AITimer)
         {
             case 1:
-                AIWalkDir = Random.NextBool() ? 1 : -1;
+                AIWalkDir = Random.NextBool().ToDirectionInt();
                 break;
             case >= 120 when Random.Next(StopFrequency) == 0:
                 AIState = (float)ActionState.Idle;
@@ -129,7 +117,7 @@ public class NPCWalkingBehaviour : NPCAIComponent
                 NPC.velocity.X = 0;
         }
 
-        NPC.spriteDirection = AIWalkDir == 1 ? 1 : -1;
+        NPC.spriteDirection = (int)AIWalkDir;
     }
 
     /// <summary>
@@ -137,7 +125,7 @@ public class NPCWalkingBehaviour : NPCAIComponent
     /// </summary>
     public override void FindFrame(NPC npc, int frameHeight)
     {
-        if (!Enabled) return;
+        if (!Enabled || PlasmaState) return;
 
         if (AIState == (float)ActionState.Idle && !NPC.IsABestiaryIconDummy)
         {
@@ -150,19 +138,19 @@ public class NPCWalkingBehaviour : NPCAIComponent
 
         switch (AnimationType)
         {
-            case "StraightForward": // Animates all frames in a sequential order
+            case AnimType.StraightForward: // Animates all frames in a sequential order
                 if (NPC.frameCounter < FrameTime * FrameCount)
                     NPC.frame.Y = (int)Math.Floor(NPC.frameCounter / FrameTime) * frameHeight;
                 else
                     NPC.frameCounter = 0;
                 break;
-            case "IdleForward": // Same as StraightForward, but skips the first frame (which is idle only)
-                if (NPC.frameCounter < FrameTime * FrameCount)
-                    NPC.frame.Y = (int)Math.Floor(NPC.frameCounter / FrameTime) * frameHeight;
+            case AnimType.IdleForward: // Same as StraightForward, but skips the first frame (which is idle only)
+                if (NPC.frameCounter < FrameTime * (FrameCount - 1))
+                    NPC.frame.Y = ((int)Math.Floor(NPC.frameCounter / FrameTime) + 1) * frameHeight;
                 else
-                    NPC.frameCounter = FrameTime;
+                    NPC.frameCounter = 0;
                 break;
-            case "Alternate": // Alternates between frame sequences
+            case AnimType.Alternate: // Alternates between frame sequences
                 var cycleLength = FrameCount + 1;
                 var alternateFrame = (int)(NPC.frameCounter / FrameTime) % cycleLength;
                 NPC.frame.Y = cycleLength switch
@@ -186,6 +174,7 @@ public class NPCWalkingBehaviour : NPCAIComponent
                     _ => NPC.frame.Y
                 };
                 break;
+            case AnimType.None:
             default:
                 NPC.frame.Y = 0;
                 break;
@@ -196,5 +185,13 @@ public class NPCWalkingBehaviour : NPCAIComponent
     {
         Idle,
         Walking
+    }
+    
+    public enum AnimType : byte
+    {
+        None,
+        StraightForward,
+        IdleForward,
+        Alternate
     }
 }

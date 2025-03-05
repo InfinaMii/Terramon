@@ -1,15 +1,16 @@
-﻿using Terraria.GameContent.Creative;
-using Terraria.ID;
+﻿using Terramon.Core.Loaders;
 
-namespace Terramon.Content.Items.Vanity;
+namespace Terramon.Content.Items;
 
 [AutoloadEquip(EquipType.Body)]
+[LoadGroup("TrainerVanity")]
+[LoadWeight(1f)] // After TrainerCap (0f)
 public class TrainerTorso : VanityItem
 {
     public override void SetStaticDefaults()
     {
         base.SetStaticDefaults();
-        CreativeItemSacrificesCatalog.Instance.SacrificeCountNeededByItemId[Type] = 1;
+        Item.ResearchUnlockCount = 1;
     }
 
     public override void SetDefaults()

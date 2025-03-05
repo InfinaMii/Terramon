@@ -1,17 +1,15 @@
-using System.Collections.Generic;
-using Terramon.Helpers;
+using Terramon.Content.Commands;
+using Terramon.Core.Loaders;
 using Terraria.Audio;
-using Terraria.GameContent.Creative;
-using Terraria.ID;
 using Terraria.Localization;
 
 namespace Terramon.Content.Items.PokeBalls;
 
+[LoadGroup("PokeBalls")]
 public abstract class BasePkballItem : TerramonItem
 {
-    public override ItemLoadPriority LoadPriority => ItemLoadPriority.PokeBalls;
-    protected virtual int PokeballThrow => ModContent.ProjectileType<BasePkballProjectile>();
-    protected virtual int PokeballTile => ModContent.TileType<BasePkballTile>();
+    protected abstract int PokeballThrow { get; }
+    protected abstract int PokeballTile { get; }
 
     /// <summary>
     ///     The in-game price of the Poké Ball in the core series games measured in Pokémon Dollars. Used for price scaling in
@@ -23,8 +21,7 @@ public abstract class BasePkballItem : TerramonItem
 
     public override void SetStaticDefaults()
     {
-        CreativeItemSacrificesCatalog.Instance.SacrificeCountNeededByItemId[Type] =
-            InGamePrice / 4; // Amount needed to duplicate them in Journey Mode
+        Item.ResearchUnlockCount = 50;
     }
 
     public override void SetDefaults()
@@ -33,14 +30,14 @@ public abstract class BasePkballItem : TerramonItem
         base.SetDefaults();
         Item.shoot = PokeballThrow;
         Item.shootSpeed = 6.5f;
-        Item.UseSound = new SoundStyle("Terramon/Sounds/pkball_throw");
+        Item.UseSound = new SoundStyle("Terramon/Sounds/pkball_throw") { Volume = 0.8f };
         Item.width = 32;
         Item.height = 32;
         Item.maxStack = 9999;
         Item.damage = 0;
         Item.autoReuse = false;
         Item.useStyle = ItemUseStyleID.Rapier;
-        Item.value = InGamePrice * 3;
+        Item.value = InGamePrice * 6;
         Item.useTime = 15;
         Item.consumable = true;
     }
@@ -59,7 +56,7 @@ public abstract class BasePkballItem : TerramonItem
             Item.createTile = -1;
             Item.UseSound = new SoundStyle("Terramon/Sounds/pkball_throw");
             if (player.GetModPlayer<TerramonPlayer>().HasChosenStarter) return true;
-            player.NewText(Language.GetTextValue("Mods.Terramon.Misc.RequireStarter"), new Color(255, 240, 20));
+            player.NewText(Language.GetTextValue("Mods.Terramon.Misc.RequireStarter"), TerramonCommand.ChatColorYellow);
             return false;
         }
 

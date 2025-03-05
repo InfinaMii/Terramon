@@ -1,13 +1,22 @@
 {
-  NPC:
+  Common:
   {
     Transform:
     {
-      DrawOffsetY: -2
+      Width: 30
+      Height: 32
     }
-    WalkingBehaviour: {}
+  }
+  NPC:
+  {
+    WanderingHoverBehaviour:
+    {
+      FrameCount: 5
+      FrameTime: 4
+    }
     SpawnController:
     {
+      Stage: 3
       Conditions:
       [
         {
@@ -18,5 +27,12 @@
       ]
     }
   }
-  Projectile: {}
+  Projectile:
+  {
+    FlyingPet:
+    {
+      FrameCount: 5
+      FrameTime: 4
+    }
+  }
 }

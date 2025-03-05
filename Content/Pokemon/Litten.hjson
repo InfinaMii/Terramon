@@ -1,13 +1,17 @@
 {
-  NPC:
+  Common:
   {
     Transform:
     {
       DrawOffsetY: -2
     }
+  }
+  NPC:
+  {
     WalkingBehaviour: {}
     SpawnController:
     {
+      Stage: 1
       Conditions:
       [
         {
@@ -18,5 +22,8 @@
       ]
     }
   }
-  Projectile: {}
+  Projectile:
+  {
+    GenericPet: {}
+  }
 }

@@ -1,21 +1,19 @@
 using Terramon.Content.Configs;
-using Terramon.Content.Items.Evolutionary;
+using Terramon.Core.Systems.PokemonDirectUseSystem;
 using Terramon.Helpers;
 using Terraria.Audio;
-using Terraria.GameContent.Creative;
-using Terraria.ID;
 using Terraria.Localization;
 
-namespace Terramon.Content.Items.Vitamins;
+namespace Terramon.Content.Items;
 
-public class RareCandy : Vitamin
+public class RareCandy : Vitamin, IPokemonDirectUse
 {
     protected override int UseRarity { get; } = ModContent.RarityType<RareCandyRarity>();
 
     public override void SetStaticDefaults()
     {
         base.SetStaticDefaults();
-        CreativeItemSacrificesCatalog.Instance.SacrificeCountNeededByItemId[Type] = 50;
+        Item.ResearchUnlockCount = 50;
     }
 
     public override void SetDefaults()
@@ -25,12 +23,12 @@ public class RareCandy : Vitamin
         Item.height = 28;
     }
 
-    protected override bool AffectedByPokemonDirectUse(PokemonData data)
+    public bool AffectedByPokemonDirectUse(PokemonData data)
     {
         return data.Level < Terramon.MaxPokemonLevel;
     }
 
-    protected override void PokemonDirectUse(Player player, PokemonData data)
+    public int PokemonDirectUse(Player player, PokemonData data, int amount = 1)
     {
         if (player.whoAmI != Main.myPlayer)
         {
@@ -40,18 +38,37 @@ public class RareCandy : Vitamin
                 var d = Dust.NewDustPerfect(player.Center + speed * 26, DustID.FrostHydra);
                 d.noGravity = true;
             }
+
             SoundEngine.PlaySound(SoundID.Item4, player.position);
-            return;
+            return 0;
         }
 
-        data.LevelUp();
+        // Get whether fast evolution is enabled
+        var clientConfig = ModContent.GetInstance<ClientConfig>();
+        var fastEvolution = clientConfig.FastEvolution;
+
+        // Level up as many times as possible given the amount used
+        var oldLevel = data.Level;
+        var origSpecies = data.ID;
+        ushort queuedEvolution = 0;
+        var evolutions = new List<ushort>();
+        for (var i = 0; i < amount && data.LevelUp(); i++)
+        {
+            // Check if the Pokémon is ready to evolve after leveling up
+            queuedEvolution = data.GetQueuedEvolution(EvolutionTrigger.LevelUp);
+            if (!fastEvolution || queuedEvolution == 0 || evolutions.Contains(queuedEvolution)) continue;
+            evolutions.Add(queuedEvolution);
+            data.EvolveInto(queuedEvolution);
+            queuedEvolution = 0;
+        }
+
+        data.ID = origSpecies; // Reset the ID to the original species (hacky)
+
         Main.NewText(
-            Language.GetTextValue("Mods.Terramon.Misc.RareCandyUse", data.DisplayName, data.Level),
-            Color.White);
-        player.GetModPlayer<TerramonPlayer>().Quests.TrackProgress(new QuestCondition{ UseItem = this.Type, PokemonId = data.ID, PokemonType = Terramon.DatabaseV2.GetPokemon(data.ID).Types[0] });
-        
-        // Test effect
-        CombatText.NewText(player.getRect(), Color.White, $"Lv. {data.Level - 1} > {data.Level}");
+            Language.GetTextValue("Mods.Terramon.Misc.RareCandyUse", data.DisplayName, data.Level));
+
+        // Visual feedback effects
+        CombatText.NewText(player.getRect(), Color.White, $"Lv. {oldLevel} > {data.Level}");
         SoundEngine.PlaySound(SoundID.Item20);
         for (var j = 0; j < 40; j++)
         {
@@ -59,32 +76,44 @@ public class RareCandy : Vitamin
             var d = Dust.NewDustPerfect(player.Center + speed * 26, DustID.FrostHydra);
             d.noGravity = true;
         }
-        
-        SoundEngine.PlaySound(SoundID.Item2, player.position);
-        SoundEngine.PlaySound(SoundID.Item4, player.position);
-        
-        var queuedEvolution = data.GetQueuedEvolution(EvolutionTrigger.LevelUp);
-        if (queuedEvolution == 0) return;
-        
-        if (ModContent.GetInstance<ClientConfig>().FastEvolution)
+
+        SoundEngine.PlaySound(SoundID.Item4);
+
+        player.GetModPlayer<TerramonPlayer>().Quests.TrackProgress(new QuestCondition{ UseItem = this.Type, PokemonId = data.ID, PokemonType = Terramon.DatabaseV2.GetPokemon(data.ID).Types[0] });
+
+        if (evolutions.Count > 0) // Check if the Pokémon evolved
         {
             TerramonWorld.PlaySoundOverBGM(new SoundStyle("Terramon/Sounds/pkball_catch_pla"));
-            Main.NewText(
-                Language.GetTextValue("Mods.Terramon.Misc.PokemonEvolved", data.DisplayName,
-                    Terramon.DatabaseV2.GetLocalizedPokemonName(queuedEvolution)), new Color(50, 255, 130));
-            data.EvolveInto(queuedEvolution);
-            player.GetModPlayer<TerramonPlayer>().UpdatePokedex(queuedEvolution, PokedexEntryStatus.Registered);
+            var modPlayer = player.GetModPlayer<TerramonPlayer>();
+            var showPokedexRegistrationMessages = clientConfig.ShowPokedexRegistrationMessages;
+            // Iterate through all evolutions
+            foreach (var evolution in evolutions)
+            {
+                var evolvedSpeciesName = Terramon.DatabaseV2.GetLocalizedPokemonNameDirect(evolution);
+                Main.NewText(
+                    Language.GetTextValue("Mods.Terramon.Misc.PokemonEvolved", data.DisplayName,
+                        evolvedSpeciesName), new Color(50, 255, 130));
+                data.EvolveInto(evolution);
+                var justRegistered =
+                    modPlayer.UpdatePokedex(evolution, PokedexEntryStatus.Registered, shiny: data.IsShiny);
+                if (!justRegistered || !showPokedexRegistrationMessages)
+                    continue;
+                Main.NewText(Language.GetTextValue("Mods.Terramon.Misc.PokedexRegistered", evolvedSpeciesName),
+                    new Color(159, 162, 173));
+            }
         }
-        else
+        else if (queuedEvolution != 0) // Check if the Pokémon is ready to evolve
         {
             Main.NewText(
                 Language.GetTextValue("Mods.Terramon.Misc.PokemonEvolutionReady", data.DisplayName),
                 new Color(50, 255, 130));
         }
+
+        return data.Level - oldLevel; // Actual amount of candies consumed (levels gained)
     }
 }
 
 public class RareCandyRarity : ModRarity
 {
-    public override Color RarityColor { get; } = ColorUtils.FromHex(0x6299E5);
+    public override Color RarityColor { get; } = ColorUtils.FromHexRGB(0x6299E5);
 }

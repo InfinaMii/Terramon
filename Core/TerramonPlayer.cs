@@ -1,9 +1,14 @@
-using System.Linq;
 using EasyPacketsLib;
 using Terramon.Content.Buffs;
 using Terramon.Content.GUI;
+using Terramon.Content.Items;
 using Terramon.Content.Items.PokeBalls;
 using Terramon.Content.Packets;
+using Terramon.Content.Tiles.Interactive;
+using Terramon.Core.Loaders.UILoading;
+using Terramon.Core.Systems;
+using Terraria.DataStructures;
+using Terraria.GameInput;
 using Terraria.Localization;
 using Terraria.ModLoader.IO;
 
@@ -13,13 +18,31 @@ public class TerramonPlayer : ModPlayer
 {
     private readonly PCService _pc = new();
     private readonly PokedexService _pokedex = new();
+    private readonly PokedexService _shinyDex = new();
 
+    private int _activePCTileEntityID = -1;
     private int _activeSlot = -1;
 
     private bool _lastPlayerInventory;
     private int _premierBonusCount;
+    private bool _receivedShinyCharm;
 
     public bool HasChosenStarter;
+
+    public int ActivePCTileEntityID
+    {
+        get => _activePCTileEntityID;
+        set
+        {
+            _activePCTileEntityID = value;
+            if (Main.myPlayer != Player.whoAmI) return; // Only the local player should handle this
+            if (value != -1)
+                PCInterface.OnOpen();
+            else
+                PCInterface.OnClose();
+        }
+    }
+
     public PokemonData[] Party { get; } = new PokemonData[6];
     public QuestManager Quests { get; } = new QuestManager();
 
@@ -29,7 +52,7 @@ public class TerramonPlayer : ModPlayer
         set
         {
             // Toggle off dedicated pet slot
-            if (_activeSlot == -1)
+            if (_activeSlot == -1 && !Player.miscEquips[0].IsAir)
                 Player.hideMisc[0] = true;
             _activeSlot = value;
             var buffType = ModContent.BuffType<PokemonCompanion>();
@@ -56,14 +79,45 @@ public class TerramonPlayer : ModPlayer
         return ActiveSlot >= 0 ? Party[ActiveSlot] : null;
     }
 
-    public PokedexService GetPokedex()
+    public PokedexService GetPokedex(bool shiny = false)
     {
-        return _pokedex;
+        return shiny ? _shinyDex : _pokedex;
+    }
+
+    public PCService GetPC()
+    {
+        return _pc;
     }
 
     public override void OnEnterWorld()
     {
-        Terramon.ResetPartyUI();
+        Terramon.RefreshPartyUI();
+
+        // Request a full sync of the World Dex from the server when joining a host in multiplayer
+        if (Main.netMode == NetmodeID.MultiplayerClient) Mod.SendPacket(new RequestWorldDexRpc());
+    }
+
+    public override void Kill(double damage, int hitDirection, bool pvp, PlayerDeathReason damageSource)
+    {
+        // Clear active PC when player dies
+        TurnOffUsedPC();
+    }
+
+    private void TurnOffUsedPC()
+    {
+        if (_activePCTileEntityID != int.MaxValue)
+        {
+            if (_activePCTileEntityID != -1 &&
+                TileEntity.ByID.TryGetValue(_activePCTileEntityID, out var entity) && entity is PCTileEntity
+                {
+                    PoweredOn: true
+                } pc)
+                pc.ToggleOnOff();
+        }
+        else
+        {
+            ActivePCTileEntityID = -1;
+        }
     }
 
     public override void OnRespawn()
@@ -75,14 +129,33 @@ public class TerramonPlayer : ModPlayer
             Player.AddBuff(ModContent.BuffType<PokemonCompanion>(), 2);
     }
 
+    public override void ProcessTriggers(TriggersSet triggersSet)
+    {
+        if (HasChosenStarter && KeybindSystem.HubKeybind.JustPressed)
+            HubUI.ToggleActive();
+
+        if (!KeybindSystem.TogglePartyKeybind.JustPressed) return;
+        var inventoryParty = UILoader.GetUIState<InventoryParty>();
+        if (inventoryParty.Visible) inventoryParty.SimulateToggleSlots();
+    }
+
+    public override void PostUpdateBuffs()
+    {
+        if (TooltipOverlay.IsHoldingPokemon())
+            Player.controlUseItem = false;
+    }
+
     public override void PreUpdate()
     {
         if (Player.whoAmI != Main.myPlayer) return;
 
+        if ((Player.chest != -1 || (!Main.playerInventory && !HubUI.Active)) && ActivePCTileEntityID != -1)
+            TurnOffUsedPC();
+
         // Handle player removing companion buff manually (right-clicking the buff icon)
         if (!Player.HasBuff<PokemonCompanion>() && ActiveSlot >= 0 && !Player.dead)
             ActiveSlot = -1;
-        
+
         // End the sidebar animation if the player opens their inventory to prevent visual bugs
         if (Main.playerInventory && !_lastPlayerInventory)
             PartyDisplay.Sidebar.ForceKillAnimation();
@@ -94,8 +167,8 @@ public class TerramonPlayer : ModPlayer
         if (premierBonus > 0)
         {
             Main.NewText(premierBonus == 1
-                ? Language.GetTextValue("Mods.Terramon.GUI.Shop.PremierBonus")
-                : Language.GetTextValue("Mods.Terramon.GUI.Shop.PremierBonusPlural", premierBonus));
+                ? Language.GetTextValue("Mods.Terramon.GUI.NPCShop.PremierBonus")
+                : Language.GetTextValue("Mods.Terramon.GUI.NPCShop.PremierBonusPlural", premierBonus));
 
             Player.QuickSpawnItem(Player.GetSource_GiftOrReward(), ModContent.ItemType<PremierBallItem>(),
                 premierBonus);
@@ -128,9 +201,11 @@ public class TerramonPlayer : ModPlayer
     /// <summary>
     ///     Adds a Pokémon to the player's party. Returns false if their party is full; otherwise returns true.
     /// </summary>
-    public bool AddPartyPokemon(PokemonData data)
+    /// <param name="data">The Pokémon to add to the party.</param>
+    /// <param name="justRegistered">Whether the Pokémon was just registered in the Pokédex.</param>
+    public bool AddPartyPokemon(PokemonData data, out bool justRegistered)
     {
-        UpdatePokedex(data.ID, PokedexEntryStatus.Registered);
+        justRegistered = UpdatePokedex(data.ID, PokedexEntryStatus.Registered, shiny: data.IsShiny);
         var nextIndex = NextFreePartyIndex();
         if (nextIndex == 6) return false;
         Party[nextIndex] = data;
@@ -156,15 +231,38 @@ public class TerramonPlayer : ModPlayer
         return 6;
     }
 
-    public bool UpdatePokedex(ushort id, PokedexEntryStatus status, bool force = false)
+    public bool UpdatePokedex(ushort id, PokedexEntryStatus status, bool force = false, bool shiny = false)
     {
-        ModContent.GetInstance<TerramonWorld>().UpdateWorldDex(id, status, Player.name, force);
+        TerramonWorld.UpdateWorldDex(id, status, Player.name, force);
         var hasEntry = _pokedex.Entries.TryGetValue(id, out var entry);
-        if (!hasEntry) return false;
-        if (!force && entry.Status >= status) return false;
-        entry.Status = status;
+        var entryUpdated = false;
+        if (hasEntry)
+            if (entry.Status < status || force)
+            {
+                entry.Status = status;
+                entryUpdated = true;
+            }
 
-        return true;
+        if (shiny)
+        {
+            var hasShinyEntry = _shinyDex.Entries.TryGetValue(id, out var shinyEntry);
+            if (hasShinyEntry)
+                if (shinyEntry.Status < status || force)
+                    shinyEntry.Status = status;
+        }
+
+        if (HubUI.Active) UILoader.GetUIState<HubUI>().RefreshPokedex(id, shiny);
+        if (!force && status == PokedexEntryStatus.Registered && entryUpdated &&
+            _pokedex.RegisteredCount == Terramon.LoadedPokemonCount && !_receivedShinyCharm)
+            GiveShinyCharmReward();
+        return force ? hasEntry : entryUpdated;
+    }
+
+    private void GiveShinyCharmReward()
+    {
+        Player.QuickSpawnItem(Player.GetSource_GiftOrReward(),
+            ModContent.ItemType<ShinyCharm>());
+        _receivedShinyCharm = true;
     }
 
     public PCBox TransferPokemonToPC(PokemonData data)
@@ -174,12 +272,12 @@ public class TerramonPlayer : ModPlayer
 
     public string GetDefaultNameForPCBox(PCBox box)
     {
-        return "Box " + (_pc.Boxes.IndexOf(box) + 1);
+        return Language.GetTextValue("Mods.Terramon.Misc.PCBoxDefaultName", _pc.Boxes.IndexOf(box) + 1);
     }
 
     public override void SaveData(TagCompound tag)
     {
-        tag["starterChosen"] = HasChosenStarter;
+        tag["flags"] = (byte)new BitsByte(HasChosenStarter, _receivedShinyCharm);
         if (ActiveSlot >= 0)
             tag["activeSlot"] = ActiveSlot;
         SaveParty(tag);
@@ -189,9 +287,15 @@ public class TerramonPlayer : ModPlayer
 
     public override void LoadData(TagCompound tag)
     {
-        HasChosenStarter = tag.GetBool("starterChosen");
+        if (tag.ContainsKey("flags"))
+        {
+            BitsByte flags = tag.GetByte("flags");
+            HasChosenStarter = flags[0];
+            _receivedShinyCharm = flags[1];
+        }
+
         if (tag.TryGet("activeSlot", out int slot))
-            ActiveSlot = slot;
+            _activeSlot = slot;
         LoadParty(tag);
         LoadPokedex(tag);
         LoadPC(tag);
@@ -202,7 +306,7 @@ public class TerramonPlayer : ModPlayer
         for (var i = 0; i < Party.Length; i++)
         {
             if (Party[i] == null) continue;
-            tag[$"p{i}"] = Party[i];
+            tag[$"p{i}"] = Party[i].SerializeData();
         }
     }
 
@@ -211,26 +315,31 @@ public class TerramonPlayer : ModPlayer
         for (var i = 0; i < Party.Length; i++)
         {
             var tagName = $"p{i}";
-            if (tag.ContainsKey(tagName)) Party[i] = tag.Get<PokemonData>(tagName);
+            if (tag.ContainsKey(tagName)) Party[i] = PokemonData.Load(tag.GetCompound(tagName));
         }
     }
 
     private void SavePokedex(TagCompound tag)
     {
-        tag["pokedex"] = _pokedex.Entries.Select(entry => new[] { entry.Key, (byte)entry.Value.Status }).ToList();
+        var pokedexEntries = _pokedex.GetEntriesForSaving();
+        if (pokedexEntries.Count > 0)
+            tag["pokedex"] = pokedexEntries;
+        var shinyDexEntries = _shinyDex.GetEntriesForSaving();
+        if (shinyDexEntries.Count > 0)
+            tag["shinyDex"] = shinyDexEntries;
     }
 
     private void LoadPokedex(TagCompound tag)
     {
         const string tagName = "pokedex";
-        if (!tag.ContainsKey(tagName)) return;
-        var entries = tag.GetList<int[]>(tagName);
-        foreach (var entry in entries) UpdatePokedex((ushort)entry[0], (PokedexEntryStatus)entry[1]);
+        const string shinyTagName = "shinyDex";
+        if (tag.ContainsKey(tagName)) _pokedex.LoadEntries(tag.GetList<int[]>(tagName));
+        if (tag.ContainsKey(shinyTagName)) _shinyDex.LoadEntries(tag.GetList<int[]>(shinyTagName));
     }
 
     private void SavePC(TagCompound tag)
     {
-        tag["pc"] = _pc.Boxes;
+        tag["pc"] = _pc.Boxes.Select(box => box.SerializeData()).ToList();
     }
 
     private void LoadPC(TagCompound tag)
@@ -238,7 +347,7 @@ public class TerramonPlayer : ModPlayer
         const string tagName = "pc";
         if (!tag.ContainsKey(tagName)) return;
         _pc.Boxes.Clear();
-        var boxes = tag.GetList<PCBox>(tagName);
+        var boxes = tag.GetList<TagCompound>(tagName).Select(PCBox.Load);
         foreach (var box in boxes)
         {
             box.Service = _pc;
@@ -257,8 +366,11 @@ public class TerramonPlayer : ModPlayer
 
     public override void SyncPlayer(int toWho, int fromWho, bool newPlayer)
     {
-        Mod.SendPacket(new UpdateActivePokemonRpc((byte)Player.whoAmI, GetActivePokemon()), toWho, fromWho, !newPlayer);
-        Mod.SendPacket(new PlayerFlagsRpc((byte)Player.whoAmI, HasChosenStarter), toWho, fromWho, !newPlayer);
+        var activePokemonData = GetActivePokemon();
+        if (activePokemonData != null)
+            Mod.SendPacket(new UpdateActivePokemonRpc((byte)Player.whoAmI, activePokemonData), toWho, fromWho);
+        if (HasChosenStarter)
+            Mod.SendPacket(new PlayerFlagsRpc((byte)Player.whoAmI, true), toWho, fromWho);
     }
 
     public override void CopyClientState(ModPlayer targetCopy)

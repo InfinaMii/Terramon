@@ -1,11 +1,14 @@
 {
-  NPC:
+  Common:
   {
     Transform:
     {
       Width: 24
       Height: 22
     }
+  }
+  NPC:
+  {
     WalkingBehaviour:
     {
       FrameCount: 4
@@ -13,6 +16,7 @@
     }
     SpawnController:
     {
+      Stage: 1
       Conditions:
       [
         {
@@ -23,5 +27,14 @@
       ]
     }
   }
-  Projectile: {}
+  Projectile:
+  {
+    GenericPet:
+    {
+      FrameCount: 4
+      FrameTime: 8
+      IsClassic: false
+      ExtraStopFrame: 2
+    }
+  }
 }

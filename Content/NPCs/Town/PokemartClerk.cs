@@ -1,15 +1,12 @@
-﻿using System.Collections.Generic;
-using Terramon.Content.GUI;
-using Terramon.Content.Items.Evolutionary;
+﻿using Terramon.Content.Configs;
+using Terramon.Content.Items;
 using Terramon.Content.Items.PokeBalls;
-using Terramon.Content.Items.Vanity;
 using Terramon.Content.Tiles.MusicBoxes;
 using Terramon.ID;
 using Terraria.Audio;
 using Terraria.GameContent;
 using Terraria.GameContent.Bestiary;
 using Terraria.GameContent.Personalities;
-using Terraria.ID;
 using Terraria.Localization;
 using Terraria.Utilities;
 using static Terraria.GameContent.Profiles;
@@ -43,7 +40,7 @@ public class PokemartClerk : ModNPC
         NPCID.Sets.AttackFrameCount[Type] = 4;
         NPCID.Sets.DangerDetectRange[Type] =
             700; // The amount of pixels away from the center of the npc that it tries to attack enemies.
-        NPCID.Sets.AttackType[Type] = 0;
+        NPCID.Sets.AttackType[Type] = -1;
         NPCID.Sets.AttackTime[Type] =
             90; // The amount of time it takes for the NPC's attack animation to be over once it starts.
         NPCID.Sets.AttackAverageChance[Type] = 30;
@@ -131,7 +128,7 @@ public class PokemartClerk : ModNPC
             "Steven",
             "Xavier",
             "Asher",
-            Language.GetTextValue("Mods.Terramon.Pokemon.Pikachu.DisplayName"),
+            "Pikachu",
             "Lance"
         ];
     }
@@ -141,28 +138,29 @@ public class PokemartClerk : ModNPC
         var player = TerramonPlayer.LocalPlayer;
         var activePokemonData = player.GetActivePokemon();
 
-        //TODO: Re-enable dialogue CheckBack when he's given more sales and Crafting when Poke Balls are craftable
+        //TODO: Re-enable dialogue CheckBack when he's given more sales
         var chat = new WeightedRandom<string>();
         chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.Catchem"));
         chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.Furret"));
         //chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.CheckBack"));
         chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.Biomes"));
         chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.Regions"));
-        //chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.Crafting"));
         chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.EvolutionStones"));
         chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.SickBurn"));
         chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.Dedication", Main.worldName));
         chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.NoBattleRip"));
 
-        if (NPC.GivenName == Language.GetTextValue("Mods.Terramon.Pokemon.Pikachu.DisplayName"))
+        var itemName = WorldGen.SavedOreTiers.Iron == TileID.Lead ? "MapObject.Lead" : "MapObject.Iron";
+        chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.Crafting", Language.GetTextValue(itemName).ToLower()));
+
+        if (NPC.GivenName == "Pikachu")
             chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.BadName"));
 
         //only add chat about Pokemon if it exists
         if (activePokemonData != null)
         {
-            //TODO: Add Pokemon nickname here + later text (nickname would replace second GetLocalizedPokemonName)
             chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.PokemonHello",
-                Terramon.DatabaseV2.GetLocalizedPokemonName(activePokemonData.ID),
+                activePokemonData.LocalizedName,
                 activePokemonData.DisplayName));
 
             /*if (pokemon.data.Nickname == null)
@@ -170,13 +168,14 @@ public class PokemartClerk : ModNPC
             else
                 chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.PokemonNickname", pokemon.));*/
 
-            var pokemonType = Terramon.DatabaseV2.GetPokemon(activePokemonData.ID).Types[0];
+            var pokemonType = activePokemonData.Schema.Types[0];
+            // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
             switch (pokemonType)
             {
-                case TypeID.Grass:
+                case PokemonType.Grass:
                     chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.PokemonGrass"));
                     break;
-                case TypeID.Ice:
+                case PokemonType.Ice:
                     chat.Add(Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.PokemonIce"));
                     break;
             }
@@ -214,8 +213,6 @@ public class PokemartClerk : ModNPC
         return chat; // chat is implicitly cast to a string.
     }
 
-    //TODO: Add optional evolution function back (Fast Evolution config = false) in case players want to level up Pokemon without evolving
-
     public override void SetChatButtons(ref string button, ref string button2)
     {
         // What the chat buttons are when you open up the chat UI
@@ -224,7 +221,8 @@ public class PokemartClerk : ModNPC
         var player = Main.LocalPlayer.GetModPlayer<TerramonPlayer>();
         var activePokemonData = player.GetActivePokemon();
         if (activePokemonData != null && activePokemonData.GetQueuedEvolution(EvolutionTrigger.LevelUp) != 0)
-            button2 = "Evolve " + activePokemonData.DisplayName;
+            button2 = Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.EvolveButton",
+                activePokemonData.DisplayName);
     }
 
     public override void OnChatButtonClicked(bool firstButton, ref string shopName)
@@ -237,11 +235,16 @@ public class PokemartClerk : ModNPC
             if (activePokemonData == null) return;
             var queuedEvolution = activePokemonData.GetQueuedEvolution(EvolutionTrigger.LevelUp);
             if (queuedEvolution == 0) return;
+            var queuedEvolutionName = Terramon.DatabaseV2.GetLocalizedPokemonNameDirect(queuedEvolution);
             TerramonWorld.PlaySoundOverBGM(new SoundStyle("Terramon/Sounds/pkball_catch_pla"));
             Main.npcChatText = Language.GetTextValue("Mods.Terramon.NPCs.PokemartClerk.Dialogue.EvolutionCongrats",
-                activePokemonData.DisplayName, Terramon.DatabaseV2.GetLocalizedPokemonName(queuedEvolution));
+                activePokemonData.DisplayName, queuedEvolutionName);
             activePokemonData.EvolveInto(queuedEvolution);
-            player.UpdatePokedex(queuedEvolution, PokedexEntryStatus.Registered);
+            var justRegistered = player.UpdatePokedex(queuedEvolution, PokedexEntryStatus.Registered,
+                shiny: activePokemonData.IsShiny);
+            if (!justRegistered || !ModContent.GetInstance<ClientConfig>().ShowPokedexRegistrationMessages) return;
+            Main.NewText(Language.GetTextValue("Mods.Terramon.Misc.PokedexRegistered", queuedEvolutionName),
+                new Color(159, 162, 173));
         }
     }
 
@@ -258,7 +261,6 @@ public class PokemartClerk : ModNPC
 
         npcShop.Register(); // Name of this shop tab
     }
-
 
     // Make this Town NPC teleport to the King and/or Queen statue when triggered.
     public override bool CanGoToStatue(bool toKingStatue)

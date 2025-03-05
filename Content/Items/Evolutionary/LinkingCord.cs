@@ -1,7 +1,7 @@
 using Terramon.Helpers;
 using Terramon.ID;
 
-namespace Terramon.Content.Items.Evolutionary;
+namespace Terramon.Content.Items;
 
 public class LinkingCord : EvolutionaryItem
 {
@@ -12,7 +12,7 @@ public class LinkingCord : EvolutionaryItem
         base.SetDefaults();
         Item.width = 32;
         Item.height = 36;
-        Item.value = Item.buyPrice(silver: 30);
+        Item.value = Item.buyPrice(gold: 5);
     }
     
     public override ushort GetEvolvedSpecies(PokemonData data)
@@ -30,5 +30,5 @@ public class LinkingCord : EvolutionaryItem
 
 public class LinkingCordRarity : ModRarity
 {
-    public override Color RarityColor { get; } = ColorUtils.FromHex(0x9B94B4);
+    public override Color RarityColor { get; } = ColorUtils.FromHexRGB(0x9B94B4);
 }

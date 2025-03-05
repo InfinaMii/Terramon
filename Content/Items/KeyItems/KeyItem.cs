@@ -1,21 +1,19 @@
-using System.Collections.Generic;
 using Terramon.Content.Rarities;
-using Terraria.GameContent.Creative;
+using Terramon.Core.Loaders;
 using Terraria.Localization;
 
-namespace Terramon.Content.Items.KeyItems;
+namespace Terramon.Content.Items;
 
+[LoadGroup("KeyItems")]
 public abstract class KeyItem : TerramonItem
 {
-    public override ItemLoadPriority LoadPriority => ItemLoadPriority.KeyItems;
-
     public override string Texture => "Terramon/Assets/Items/KeyItems/" + GetType().Name;
 
     protected override int UseRarity => ModContent.RarityType<KeyItemRarity>();
 
     public override void SetStaticDefaults()
     {
-        CreativeItemSacrificesCatalog.Instance.SacrificeCountNeededByItemId[Type] = 1;
+        Item.ResearchUnlockCount = 1;
     }
 
     public override void SetDefaults()

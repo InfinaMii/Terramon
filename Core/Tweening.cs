@@ -1,19 +1,8 @@
-using System;
-using System.Collections.Generic;
-using Terramon.Core.Loaders.UILoading;
-using Terraria.UI;
-
 namespace Terramon.Core;
 
-public class Tween : SmartUIState
+public static class Tween
 {
-    public static readonly List<ITweener> ActiveTweens = new();
-    public override bool Visible => true;
-
-    public override int InsertionIndex(List<GameInterfaceLayer> layers)
-    {
-        return layers.FindIndex(layer => layer.Name.Equals("Vanilla: Radial Hotbars"));
-    }
+    public static readonly List<ITweener> ActiveTweens = [];
 
     public static ITweener To<T>(Func<T> getter, Action<T> setter, T endValue,
         float time) where T : struct
@@ -29,17 +18,23 @@ public class Tween : SmartUIState
         {
             From = from,
             Setter = setter,
-            StartTime = (float)Main.timeForVisualEffects,
-            EndTime = (float)Main.timeForVisualEffects + time * 60,
+            StartTime = (float)SimulationTime,
+            EndTime = (float)SimulationTime + time,
             StartValue = getter.Invoke(from),
             EndValue = endValue
         };
         ActiveTweens.Add(tweener);
         return tweener;
     }
+    
+    public static double SimulationTime { get; private set; }
 
-    public override void SafeUpdate(GameTime gameTime)
+    /// <summary>
+    ///     Updates all active tweens. Should be called once per frame.
+    /// </summary>
+    public static void DoUpdate(GameTime gameTime)
     {
+        SimulationTime += gameTime.ElapsedGameTime.TotalSeconds;
         for (var i = 0; i < ActiveTweens.Count; i++)
             if (!ActiveTweens[i].Update())
                 ActiveTweens.RemoveAt(i--);
@@ -72,8 +67,26 @@ public class Tweener<TFrom, TValue> : ITweener where TValue : struct
     public bool Update()
     {
         if (_killed) return false;
-        var t = (Main.timeForVisualEffects - StartTime) /
-                (EndTime - StartTime);
+        
+        // Get the current time
+        var currentTime = Tween.SimulationTime; // Main.timeForVisualEffects;
+        
+        const double maxTime = 216000.0;
+        double timeDiff;
+
+        if (EndTime >= StartTime)
+            // Normal case: No wrap-around
+            timeDiff = EndTime - StartTime;
+        else
+            // Wrap-around case: EndTime < StartTime
+            timeDiff = maxTime - StartTime + EndTime;
+
+        var t = (currentTime - StartTime) / timeDiff;
+
+        // Handle the case where Main.timeForVisualEffects is also wrapped
+        if (currentTime < StartTime) t = (currentTime + maxTime - StartTime) / timeDiff;
+
+        // Clamp t to the [0, 1] range
         t = Math.Clamp(t, 0, 1);
         t = ApplyEasing(_ease, t);
         switch (StartValue, EndValue)
@@ -83,7 +96,7 @@ public class Tweener<TFrom, TValue> : ITweener where TValue : struct
                 break;
         }
 
-        var isComplete = Main.timeForVisualEffects >= EndTime;
+        var isComplete = currentTime >= EndTime;
         if (!isComplete) return true;
         Setter.Invoke(From, EndValue);
         _killed = true;

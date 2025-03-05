@@ -1,25 +1,18 @@
-using System.IO;
 using EasyPacketsLib;
-using Terramon.Content.NPCs.Pokemon;
-using Terraria.ID;
+using Terramon.Content.NPCs;
+using Terraria.Localization;
 
 namespace Terramon.Content.Commands;
 
-public class PokeClearCommand : TerramonCommand
+public class PokeClearCommand : DebugCommand
 {
-    public override CommandType Type
-        => CommandType.World;
+    public override CommandType Type => CommandType.World;
 
-    public override string Command
-        => "pokeclear";
+    public override string Command => "pokeclear";
 
-    public override string Usage
-        => "/pokeclear";
+    public override string Description => Language.GetTextValue("Mods.Terramon.Commands.PokeClear.Description");
 
-    public override string Description
-        => "Clears all Pokémon NPCs in the world";
-
-    protected override int MinimumArgumentCount => 0;
+    public override string Usage => Language.GetTextValue("Mods.Terramon.Commands.PokeClear.Usage");
 
     public override void Load()
     {
@@ -28,7 +21,8 @@ public class PokeClearCommand : TerramonCommand
 
     public override void Action(CommandCaller caller, string input, string[] args)
     {
-        caller.Reply($"Cleared {ClearPokemonNpcs()} Pokémon NPC(s)", new Color(255, 240, 20));
+        caller.Reply(Language.GetTextValue("Mods.Terramon.Commands.PokeClear.Success", ClearPokemonNpcs()),
+            ChatColorYellow);
         if (Main.netMode != NetmodeID.Server) return;
         Mod.SendPacket(new PokeClearRpc((byte)caller.Player.whoAmI));
     }
@@ -50,8 +44,10 @@ public class PokeClearCommand : TerramonCommand
     {
         var clearedCount = ClearPokemonNpcs();
         if (Main.myPlayer != packet.ClearedByPlayer)
-            Main.NewText($"{Main.player[packet.ClearedByPlayer].name} cleared {clearedCount} Pokémon NPC(s)",
-                new Color(255, 240, 20));
+            Main.NewText(
+                Language.GetTextValue("Mods.Terramon.Commands.PokeClear.SuccessByPlayer",
+                    Main.player[packet.ClearedByPlayer].name, clearedCount),
+                ChatColorYellow);
         handled = true;
     }
 

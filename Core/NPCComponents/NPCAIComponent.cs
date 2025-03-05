@@ -1,11 +1,13 @@
-using System.IO;
-using Terramon.Core.NPCComponents;
+using Terramon.Content.NPCs;
 using Terraria.DataStructures;
-using Terraria.ID;
 using Terraria.ModLoader.IO;
 using Terraria.Utilities;
 
-namespace Terramon.Content.NPCs;
+// ReSharper disable ConvertToConstant.Global
+// ReSharper disable FieldCanBeMadeReadOnly.Global
+// ReSharper disable MemberCanBeProtected.Global
+
+namespace Terramon.Core.NPCComponents;
 
 /// <summary>
 ///     A base <see cref="NPCComponent" /> for adding AI to an NPC.
@@ -13,6 +15,9 @@ namespace Terramon.Content.NPCs;
 /// </summary>
 public abstract class NPCAIComponent : NPCComponent
 {
+    public int FrameCount = 2;
+    public int FrameTime = 10;
+    
     /// <summary>
     ///     A <see cref="FastRandom" /> for generating random numbers.
     ///     This is synchronized across the network and should be used to ensure deterministic randomness on all clients in
@@ -21,13 +26,16 @@ public abstract class NPCAIComponent : NPCComponent
     protected FastRandom Random;
 
     /// <summary>
-    ///     The NPC this component is attached to.
+    ///     Shorthand for <c>((PokemonNPC)NPC.ModNPC).PlasmaState</c>.
     /// </summary>
-    protected NPC NPC { get; private set; }
-    
-    protected override void OnEnabled(NPC npc)
+    protected bool PlasmaState => ((PokemonNPC)NPC.ModNPC).PlasmaState;
+
+    public override void SetDefaults(NPC npc)
     {
-        NPC = npc;
+        base.SetDefaults(npc);
+        if (!Enabled) return;
+
+        Main.npcFrameCount[npc.type] = FrameCount;
     }
 
     public override void OnSpawn(NPC npc, IEntitySource source)

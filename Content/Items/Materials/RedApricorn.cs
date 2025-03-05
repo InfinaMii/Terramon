@@ -1,6 +1,6 @@
 using Terramon.Helpers;
 
-namespace Terramon.Content.Items.Materials;
+namespace Terramon.Content.Items;
 
 public class RedApricorn : ApricornItem
 {
@@ -9,5 +9,5 @@ public class RedApricorn : ApricornItem
 
 public class RedApricornRarity : ModRarity
 {
-    public override Color RarityColor { get; } = ColorUtils.FromHex(0xD85749);
+    public override Color RarityColor { get; } = ColorUtils.FromHexRGB(0xD85749);
 }

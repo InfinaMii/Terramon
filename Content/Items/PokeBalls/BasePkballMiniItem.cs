@@ -1,20 +1,18 @@
-using System.Collections.Generic;
-using Terraria.GameContent.Creative;
+using Terramon.Core.Loaders;
 using Terraria.Localization;
 
 namespace Terramon.Content.Items.PokeBalls;
 
+[LoadGroup("PokeBallMinis")]
 public abstract class BasePkballMiniItem : TerramonItem
 {
-    public override ItemLoadPriority LoadPriority => ItemLoadPriority.PokeBallMinis;
-
-    protected override bool Obtainable => false;
 
     public override string Texture => "Terramon/Assets/Items/PokeBalls/" + GetType().Name;
 
     public override void SetStaticDefaults()
     {
-        CreativeItemSacrificesCatalog.Instance.SacrificeCountNeededByItemId[Type] = 1;
+        TerramonItemAPI.Sets.Unobtainable.Add(Type);
+        Item.ResearchUnlockCount = 1;
     }
 
     public override void SetDefaults()
@@ -31,5 +29,4 @@ public abstract class BasePkballMiniItem : TerramonItem
         tooltips.Insert(tooltips.FindIndex(t => t.Name == "Tooltip0"),
             new TooltipLine(Mod, "Vitamin", Language.GetTextValue("Mods.Terramon.CommonTooltips.PokeBallMinis")));
     }
-    
 }

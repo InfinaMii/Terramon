@@ -1,5 +1,5 @@
-﻿using Terramon.Helpers;
-using Terraria.GameContent.Creative;
+﻿using Terramon.Core.Loaders;
+using Terramon.Helpers;
 
 namespace Terramon.Content.Items.PokeBalls;
 
@@ -9,22 +9,28 @@ internal class UltraBallProjectile : BasePkballProjectile
     protected override float CatchModifier => 2f;
 }
 
+[LoadWeight(2f)] // After UltraBallMiniItem (1f)
 internal class UltraBallMiniItem : BasePkballMiniItem
 {
     protected override int UseRarity => ModContent.RarityType<UltraBallRarity>();
 }
 
+[LoadWeight(2f)] // After GreatBallItem (1f)
 internal class UltraBallItem : BasePkballItem
 {
     protected override int UseRarity => ModContent.RarityType<UltraBallRarity>();
     protected override int PokeballThrow => ModContent.ProjectileType<UltraBallProjectile>();
     protected override int PokeballTile => ModContent.TileType<UltraBallTile>();
-    protected override int InGamePrice => 800;
-
-    public override void SetStaticDefaults()
+    protected override int InGamePrice => 1000;
+    
+    public override void AddRecipes()
     {
-        CreativeItemSacrificesCatalog.Instance.SacrificeCountNeededByItemId[Type] =
-            InGamePrice / 2; //Amount needed to duplicate them in Journey Mode
+        CreateRecipe()
+            .AddRecipeGroup($"{nameof(Terramon)}:GoldBar", 2)
+            .AddIngredient<BlackApricorn>(2)
+            .AddIngredient<YellowApricorn>(2)
+            .AddTile(TileID.Anvils)
+            .Register();
     }
 }
 
@@ -35,5 +41,5 @@ public class UltraBallTile : BasePkballTile
 
 public class UltraBallRarity : ModRarity
 {
-    public override Color RarityColor { get; } = ColorUtils.FromHex(0xF9B643);
+    public override Color RarityColor { get; } = ColorUtils.FromHexRGB(0xF9B643);
 }

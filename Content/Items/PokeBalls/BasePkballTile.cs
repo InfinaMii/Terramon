@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.IO;
 using EasyPacketsLib;
 using Terramon.Content.Packets;
 using Terramon.Helpers;
@@ -7,11 +5,9 @@ using Terraria.Audio;
 using Terraria.DataStructures;
 using Terraria.Enums;
 using Terraria.GameContent.ObjectInteractions;
-using Terraria.ID;
 using Terraria.Localization;
 using Terraria.ModLoader.IO;
 using Terraria.ObjectData;
-using Terraria.UI;
 
 namespace Terramon.Content.Items.PokeBalls;
 
@@ -51,7 +47,7 @@ public abstract class BasePkballTile : ModTile
     public override void PlaceInWorld(int i, int j, Item item)
     {
         if (Main.netMode != NetmodeID.MultiplayerClient) return;
-        Mod.SendPacket(new PlacedPkballTileRpc((byte)Main.LocalPlayer.whoAmI, new Point16(i, j)), -1, Main.myPlayer,
+        Mod.SendPacket(new PlacedPkballTileRpc(new Point16(i, j)), -1, Main.myPlayer,
             true);
     }
 
@@ -107,7 +103,7 @@ public abstract class BasePkballTile : ModTile
         {
             if (e.TryOpen() && !e.Item.IsAir)
             {
-                var item = player.QuickSpawnItem(Entity.GetSource_None(), e.Item, e.Item.stack);
+                player.QuickSpawnItem(Entity.GetSource_None(), e.Item, e.Item.stack);
                 e.Item.TurnToAir();
             }
         }
@@ -181,8 +177,11 @@ public class BasePkballEntity : ModTileEntity
             }
             else
                 Item.stack++;
-
-            player.HeldItem.stack -= 1;
+            
+            if (Main.mouseItem.type == Item.type)
+                Main.mouseItem.stack--;
+            else if (player.HeldItem.type == Item.type)
+                player.HeldItem.stack--;
             return true;
         }
 

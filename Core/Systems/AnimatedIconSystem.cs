@@ -1,4 +1,3 @@
-using System;
 using System.Reflection;
 using ReLogic.Content;
 using Terramon.Content.Configs;
@@ -6,6 +5,7 @@ using Terraria.GameContent.UI.Elements;
 
 namespace Terramon.Core.Systems;
 
+[Autoload(Side = ModSide.Client)]
 public class AnimatedIconSystem : ModSystem
 {
     private const int FrameDelay = 12; // 60fps / 12 = 5fps
@@ -56,6 +56,7 @@ public class AnimatedIconSystem : ModSystem
 
         var uiModItemInitialize = uiModItemType!.GetMethod("OnInitialize", BindingFlags.Instance | BindingFlags.Public);
         MonoModHooks.Add(uiModItemInitialize, UIModItemInitialize_Detour);
+        
         var uiModsUpdate = modLoaderAssembly.GetType("Terraria.ModLoader.UI.UIMods")
             ?.GetMethod("Update", BindingFlags.Instance | BindingFlags.Public);
         MonoModHooks.Add(uiModsUpdate, UIModsUpdate_Detour);

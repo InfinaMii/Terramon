@@ -1,14 +1,11 @@
 using EasyPacketsLib;
-using System;
-using System.IO;
-using Terraria.ID;
 
 namespace Terramon.Content.Packets;
 
 /// <summary>
 ///     A packet for synchronizing a player's active slot with all clients.
 /// </summary>
-[Obsolete("This packet is no longer used. Use SetActivePokemonRpc instead.")]
+[Obsolete("This packet is no longer used. Use UpdateActivePokemonRpc instead.")]
 public readonly struct SetActiveSlotRpc(byte player, int activeSlot)
     : IEasyPacket<SetActiveSlotRpc>, IEasyPacketHandler<SetActiveSlotRpc>
 {

@@ -1,17 +1,16 @@
-using System;
 using Terramon.Core.NPCComponents;
-using Terramon.Helpers;
 
 // ReSharper disable FieldCanBeMadeReadOnly.Global
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable ConvertToConstant.Global
+// ReSharper disable once UnassignedField.Global
 
 namespace Terramon.Content.NPCs;
 
 /// <summary>
 ///     A <see cref="NPCComponent" /> for adding bouncing AI to an NPC.
 /// </summary>
-public class NPCBounceBehaviour : NPCAIComponent
+public sealed class NPCBounceBehaviour : NPCAIComponent
 {
     private bool _hasFirstDir;
     public float BounceFrequency = 50f;
@@ -19,29 +18,20 @@ public class NPCBounceBehaviour : NPCAIComponent
     public float BounceMinRange = -7f;
     public float ChangeDirectionChance = 1f;
     public float FallSpeedMultiplier = 1f;
-    public int FrameCount = 2;
-    public int FrameTime = 10;
     public float HorizontalSpeedMax = 3.5f;
     public float HorizontalSpeedMin = 2f;
     public float JumpSpeedMultiplier = 1f;
     public int MaxJumpClearance = -1;
+    public bool AnimateJumpOnly;
 
     private ref float AIState => ref NPC.ai[0];
     private ref float AITimer => ref NPC.ai[1];
     private ref float AIJumpVelocity => ref NPC.ai[2];
     private ref float AIJumpDirection => ref NPC.ai[3];
 
-    public override void SetDefaults(NPC npc)
-    {
-        base.SetDefaults(npc);
-        if (!Enabled) return;
-
-        Main.npcFrameCount[npc.type] = FrameCount;
-    }
-
     public override void AI(NPC npc)
     {
-        if (!Enabled) return;
+        if (!Enabled || PlasmaState) return;
 
         if (NPC.collideY) NPC.velocity.Y = 0;
         switch (AIState)
@@ -72,7 +62,7 @@ public class NPCBounceBehaviour : NPCAIComponent
         {
             if (Random.NextFloat() <= ChangeDirectionChance || !_hasFirstDir)
             {
-                AIJumpDirection = Random.NextBool() ? 1 : -1;
+                AIJumpDirection = Random.NextBool().ToDirectionInt();
                 if (!_hasFirstDir) _hasFirstDir = true;
             }
 
@@ -84,7 +74,7 @@ public class NPCBounceBehaviour : NPCAIComponent
                     AIJumpDirection = 1;
             }
 
-            NPC.netUpdate = true;
+            //NPC.netUpdate = true;
         }
 
         NPC.spriteDirection = (int)AIJumpDirection * -1;
@@ -101,10 +91,10 @@ public class NPCBounceBehaviour : NPCAIComponent
             NPC.velocity.Y = Random.NextFloat(BounceMinRange, BounceMaxRange);
             var jumpStrength = Random.NextFloat(HorizontalSpeedMin, HorizontalSpeedMax);
             AIJumpVelocity = AIJumpDirection == 1 ? -jumpStrength : jumpStrength;
-            NPC.velocity.X = AIJumpVelocity;
-            NPC.netUpdate = true;
+            //NPC.netUpdate = true;
         }
         
+        if (MathF.Abs(NPC.velocity.X) < 0.1f || AITimer == 1) NPC.velocity.X = AIJumpVelocity;
         if (NPC.velocity.Y > 0) NPC.velocity.Y *= FallSpeedMultiplier;
         else NPC.velocity.Y *= JumpSpeedMultiplier;
         if (NPC.velocity.Y != 0) return;
@@ -117,7 +107,25 @@ public class NPCBounceBehaviour : NPCAIComponent
     /// </summary>
     public override void FindFrame(NPC npc, int frameHeight)
     {
-        if (!Enabled) return;
+        if (!Enabled || PlasmaState) return;
+
+        if (AnimateJumpOnly && !NPC.IsABestiaryIconDummy)
+        {
+            if (AIState == (float)ActionState.Jump)
+            {
+                NPC.frameCounter++;
+                
+                if (NPC.frameCounter < FrameTime * FrameCount)
+                    NPC.frame.Y = (int)Math.Floor(NPC.frameCounter / FrameTime) * frameHeight;
+            } 
+            else
+            {
+                NPC.frameCounter = 0;
+                NPC.frame.Y = 0;
+            }
+            
+            return;
+        }
 
         NPC.frameCounter++;
 

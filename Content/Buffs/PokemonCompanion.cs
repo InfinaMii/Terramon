@@ -1,34 +1,40 @@
 using ReLogic.Content;
 using Terramon.Content.Configs;
+using Terramon.Core.Loaders;
 using Terramon.Helpers;
 using Terramon.ID;
 using Terraria.DataStructures;
-using Terraria.ID;
+using Terraria.GameContent;
 
 namespace Terramon.Content.Buffs;
 
 public class PokemonCompanion : ModBuff
 {
-    private const string TemplatePath = "Terramon/Assets/Buffs/BuffTemplate";
     private const string StarIconPath = "Terramon/Assets/Buffs/IconStar";
     private static RenderTarget2D _rt;
     private Asset<Texture2D> _starIconTexture;
-    private Asset<Texture2D> _templateTexture;
 
-    public override string Texture => "Terramon/Assets/Buffs/" + GetType().Name;
+    public override string Texture => "Terraria/Images/Buff";
 
     public override void SetStaticDefaults()
     {
         Main.buffNoTimeDisplay[Type] = true;
         Main.vanityPet[Type] = true;
-        _templateTexture = ModContent.Request<Texture2D>(TemplatePath);
-        _starIconTexture = ModContent.Request<Texture2D>(StarIconPath);
+        if (!Main.dedServ)
+            _starIconTexture = ModContent.Request<Texture2D>(StarIconPath);
     }
 
     public override void Update(Player player, ref int buffIndex)
     {
         // Prevent the buff from expiring
-        player.buffTime[buffIndex] = int.MaxValue;
+        player.buffTime[buffIndex] = 18000;
+
+        // Spawn the pet if needed
+        var id = player.GetModPlayer<TerramonPlayer>().GetActivePokemon()?.ID ?? 0;
+        if (id == 0) return;
+        var unused = false;
+        player.BuffHandle_SpawnPetIfNeededAndSetTime(buffIndex, ref unused,
+            PokemonEntityLoader.IDToPetType[id]);
     }
 
     public override bool PreDraw(SpriteBatch spriteBatch, int buffIndex, ref BuffDrawParams drawParams)
@@ -41,12 +47,12 @@ public class PokemonCompanion : ModBuff
         gd.Clear(Color.Transparent);
 
         spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp,
-            DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
+            DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Matrix.Identity);
 
         var player = TerramonPlayer.LocalPlayer;
 
         // Draw the template texture
-        spriteBatch.Draw(_templateTexture.Value, Vector2.Zero, new Rectangle(0, 0, 32, 32), Color.White,
+        spriteBatch.Draw(TextureAssets.Buff[Type].Value, Vector2.Zero, new Rectangle(0, 0, 32, 32), Color.White,
             0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
 
         // Draw the pokeball icon
@@ -77,7 +83,9 @@ public class PokemonCompanion : ModBuff
     public override void ModifyBuffText(ref string buffName, ref string tip, ref int rare)
     {
         var player = TerramonPlayer.LocalPlayer;
-        tip = Description.Format(player.GetActivePokemon()?.DisplayName);
+        var activePokemon = player.GetActivePokemon();
+        if (activePokemon != null)
+            tip = string.Format(tip, activePokemon.DisplayName);
         if (ModContent.GetInstance<ClientConfig>().RainbowBuffText)
             rare = ItemRarityID.Expert;
     }

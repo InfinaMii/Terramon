@@ -1,16 +1,16 @@
-﻿using Terraria.GameContent.Creative;
-using Terraria.ID;
+﻿using Terramon.Core.Loaders;
 
-namespace Terramon.Content.Items.Vanity;
+namespace Terramon.Content.Items;
 
 [AutoloadEquip(EquipType.Head)]
+[LoadGroup("TrainerVanity")]
 public class TrainerCap : VanityItem
 {
     public override void SetStaticDefaults()
     {
         base.SetStaticDefaults();
         ArmorIDs.Head.Sets.DrawHatHair[Item.headSlot] = true;
-        CreativeItemSacrificesCatalog.Instance.SacrificeCountNeededByItemId[Type] = 1;
+        Item.ResearchUnlockCount = 1;
     }
 
     public override void SetDefaults()

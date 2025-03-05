@@ -1,15 +1,14 @@
-using System.Collections.Generic;
+using Terramon.Content.Configs;
+using Terramon.Core.Loaders;
+using Terramon.Core.Systems.PokemonDirectUseSystem;
 using Terraria.Audio;
-using Terraria.GameContent.Creative;
-using Terraria.ID;
 using Terraria.Localization;
 
-namespace Terramon.Content.Items.Evolutionary;
+namespace Terramon.Content.Items;
 
-public abstract class EvolutionaryItem : TerramonItem
+[LoadGroup("EvolutionaryItems")]
+public abstract class EvolutionaryItem : TerramonItem, IPokemonDirectUse
 {
-    public override ItemLoadPriority LoadPriority => ItemLoadPriority.EvolutionaryItems;
-
     public override string Texture => "Terramon/Assets/Items/Evolutionary/" + GetType().Name;
 
     /// <summary>
@@ -17,11 +16,9 @@ public abstract class EvolutionaryItem : TerramonItem
     /// </summary>
     public virtual EvolutionTrigger Trigger => EvolutionTrigger.DirectUse;
 
-    protected override bool HasPokemonDirectUse => Trigger == EvolutionTrigger.DirectUse;
-
     public override void SetStaticDefaults()
     {
-        CreativeItemSacrificesCatalog.Instance.SacrificeCountNeededByItemId[Type] = 3;
+        Item.ResearchUnlockCount = 3;
     }
 
     public override void SetDefaults()
@@ -29,7 +26,7 @@ public abstract class EvolutionaryItem : TerramonItem
         base.SetDefaults();
         Item.maxStack = 1;
         Item.value = 50000;
-        if (!HasPokemonDirectUse) return;
+        if (Trigger != EvolutionTrigger.DirectUse) return;
         Item.UseSound = SoundID.Item28;
     }
 
@@ -45,21 +42,27 @@ public abstract class EvolutionaryItem : TerramonItem
         return 0;
     }
 
-    protected override bool AffectedByPokemonDirectUse(PokemonData data)
+    public bool AffectedByPokemonDirectUse(PokemonData data)
     {
-        return GetEvolvedSpecies(data) != 0;
+        return Trigger == EvolutionTrigger.DirectUse && GetEvolvedSpecies(data) != 0;
     }
 
-    protected override void PokemonDirectUse(Player player, PokemonData data)
+    public int PokemonDirectUse(Player player, PokemonData data, int amount = 1)
     {
-        if (player.whoAmI != Main.myPlayer) return;
+        if (player.whoAmI != Main.myPlayer) return 0;
         var evolvedSpecies = GetEvolvedSpecies(data);
+        var evolvedSpeciesName = Terramon.DatabaseV2.GetLocalizedPokemonNameDirect(evolvedSpecies);
         Main.NewText(
             Language.GetTextValue("Mods.Terramon.Misc.PokemonEvolved", data.DisplayName,
-                Terramon.DatabaseV2.GetLocalizedPokemonName(evolvedSpecies)), new Color(50, 255, 130));
+                evolvedSpeciesName), new Color(50, 255, 130));
         data.EvolveInto(evolvedSpecies);
         TerramonWorld.PlaySoundOverBGM(new SoundStyle("Terramon/Sounds/pkball_catch_pla"));
-        player.GetModPlayer<TerramonPlayer>().UpdatePokedex(evolvedSpecies, PokedexEntryStatus.Registered);
+        var justRegistered = player.GetModPlayer<TerramonPlayer>()
+            .UpdatePokedex(evolvedSpecies, PokedexEntryStatus.Registered, shiny: data.IsShiny);
+        if (!justRegistered || !ModContent.GetInstance<ClientConfig>().ShowPokedexRegistrationMessages) return 1;
+        Main.NewText(Language.GetTextValue("Mods.Terramon.Misc.PokedexRegistered", evolvedSpeciesName),
+            new Color(159, 162, 173));
+        return 1;
     }
 
     public override void ModifyTooltips(List<TooltipLine> tooltips)

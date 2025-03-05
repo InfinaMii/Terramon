@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Text;
 
@@ -15,6 +12,8 @@ public static class PrettySharp
 
     private static string FormatObject(object obj, int currentDepth, int maxDepth)
     {
+        if (obj == null) return "null";
+        
         var type = obj.GetType();
         if (currentDepth >= maxDepth) return $"[{type.Name}]";
 

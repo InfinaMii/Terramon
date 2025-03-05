@@ -1,21 +1,19 @@
 using Terramon.Content.Items;
-using Terraria.GameContent.Creative;
-using Terraria.ID;
+using Terramon.Core.Loaders;
 using Terraria.Utilities;
 
 namespace Terramon.Content.Tiles.MusicBoxes;
 
+[LoadGroup("MusicBoxes")]
 public abstract class MusicItem : TerramonItem
 {
-    public override ItemLoadPriority LoadPriority => ItemLoadPriority.PokeBallMinis;
-    
     public override string Texture => "Terramon/Assets/Tiles/MusicBoxes/" + GetType().Name;
     
     protected override int UseRarity => ItemRarityID.LightRed;
 
     public override void SetStaticDefaults()
     {
-        CreativeItemSacrificesCatalog.Instance.SacrificeCountNeededByItemId[Type] = 1;
+        Item.ResearchUnlockCount = 1;
     }
 
     public override void SetDefaults()

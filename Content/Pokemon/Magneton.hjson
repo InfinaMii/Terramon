@@ -1,13 +1,17 @@
 {
-  NPC:
+  Common:
   {
     Transform:
     {
       DrawOffsetY: -2
     }
-    WalkingBehaviour: {}
+  }
+  NPC:
+  {
+    WanderingHoverBehaviour: {}
     SpawnController:
     {
+      Stage: 2
       Conditions:
       [
         {
@@ -18,5 +22,8 @@
       ]
     }
   }
-  Projectile: {}
+  Projectile:
+  {
+    FlyingPet: {}
+  }
 }

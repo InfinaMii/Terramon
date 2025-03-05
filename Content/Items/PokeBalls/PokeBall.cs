@@ -1,5 +1,4 @@
 ﻿using Terramon.Helpers;
-using Terraria.ID;
 
 namespace Terramon.Content.Items.PokeBalls;
 
@@ -32,6 +31,15 @@ internal class PokeBallItem : BasePkballItem
         base.SetStaticDefaults();
         ItemID.Sets.ShimmerTransformToItem[Type] = ModContent.ItemType<AetherBallItem>();
     }
+
+    public override void AddRecipes()
+    {
+        CreateRecipe()
+            .AddRecipeGroup(RecipeGroupID.IronBar, 2)
+            .AddIngredient<RedApricorn>(4)
+            .AddTile(TileID.Anvils)
+            .Register();
+    }
 }
 
 public class PokeBallTile : BasePkballTile
@@ -41,5 +49,5 @@ public class PokeBallTile : BasePkballTile
 
 public class PokeBallRarity : ModRarity
 {
-    public override Color RarityColor { get; } = ColorUtils.FromHex(0xD64A56);
+    public override Color RarityColor { get; } = ColorUtils.FromHexRGB(0xD64A56);
 }

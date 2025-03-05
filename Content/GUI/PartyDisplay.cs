@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using ReLogic.Content;
 using Terramon.Content.Configs;
@@ -9,7 +6,6 @@ using Terramon.Core.Loaders.UILoading;
 using Terramon.Core.Systems;
 using Terraria.Audio;
 using Terraria.GameContent.UI.Elements;
-using Terraria.ID;
 using Terraria.Localization;
 using Terraria.UI;
 
@@ -22,7 +18,7 @@ public class PartyDisplay : SmartUIState
     public static PartySidebar Sidebar { get; private set; }
 
     public override bool Visible =>
-        !Main.playerInventory && !Main.LocalPlayer.dead && TerramonPlayer.LocalPlayer.HasChosenStarter;
+        !Main.playerInventory && !Main.LocalPlayer.dead && TerramonPlayer.LocalPlayer.HasChosenStarter && !HubUI.Active;
 
     public override int InsertionIndex(List<GameInterfaceLayer> layers)
     {
@@ -90,11 +86,11 @@ public class PartyDisplay : SmartUIState
     public override void SafeUpdate(GameTime gameTime)
     {
         var player = TerramonPlayer.LocalPlayer;
-        
+
         // Update inventory slots even if it is not visible
         var inventoryParty = UILoader.GetUIState<InventoryParty>();
         if (!inventoryParty.Visible) inventoryParty.SafeUpdate(gameTime);
-        
+
         foreach (var slot in PartySlots)
         {
             var partyData = player.Party[slot.Index];
@@ -102,7 +98,8 @@ public class PartyDisplay : SmartUIState
             if ((slot.Data == null && partyData != null) ||
                 (slot.Data != null && partyData == null) ||
                 (partyData != null && partyData.IsNetStateDirty(slot.CloneData,
-                    PokemonData.BitID | PokemonData.BitLevel | PokemonData.BitNickname, out _)))
+                    PokemonData.BitID | PokemonData.BitLevel | PokemonData.BitNickname | PokemonData.BitIsShiny,
+                    out _)))
                 UpdateSlot(partyData, slot.Index);
         }
 
@@ -126,13 +123,13 @@ public sealed class PartySidebar(Vector2 size) : UIContainer(size)
         Elements.CopyTo(elementsStatic);
         foreach (var element in elementsStatic) element.Update(gameTime);
 
-        var openKey = KeybindSystem.ToggleSidebarKeybind.Current;
+        var openKey = KeybindSystem.TogglePartyKeybind.Current;
         switch (openKey)
         {
             case true when _keyUp:
             {
                 _keyUp = false;
-                if (Main.drawingPlayerChat) break;
+                if (Main.blockInput) break;
                 _toggleTween?.Kill();
                 if (_isToggled)
                 {
@@ -218,9 +215,17 @@ public class PartySidebarSlot : UIImage
     protected override void DrawSelf(SpriteBatch spriteBatch)
     {
         base.DrawSelf(spriteBatch);
+        if (ContainsPoint(Main.MouseScreen)) Main.LocalPlayer.mouseInterface = true;
         if (!IsMouseHovering || Data == null || PartyDisplay.IsDraggingSlot) return;
+        if (KeybindSystem.OpenPokedexEntryKeybind.JustPressed)
+        {
+            HubUI.OpenToPokemon(Data.ID, Data.IsShiny);
+            return;
+        }
         var hoverText =
-            Language.GetTextValue("Mods.Terramon.GUI.Party.SlotHover" + (_isActiveSlot ? "Active" : string.Empty));
+            Language.GetTextValue(_isActiveSlot
+                ? "Mods.Terramon.GUI.Party.SlotHoverActive"
+                : "Mods.Terramon.GUI.Party.SlotHover");
         if (TerramonPlayer.LocalPlayer.NextFreePartyIndex() > 1)
             hoverText += Language.GetTextValue("Mods.Terramon.GUI.Party.SlotHoverExtra");
         Main.hoverItemName = hoverText;
@@ -235,7 +240,7 @@ public class PartySidebarSlot : UIImage
         {
             SoundPath = "Terramon/Sounds/button_smm",
             Pitch = (float)_index / -15 + 0.6f,
-            Volume = 0.3f
+            Volume = 0.2925f
         };
         SoundEngine.PlaySound(s);
     }
@@ -258,13 +263,13 @@ public class PartySidebarSlot : UIImage
         else if (IsMouseHovering && Data != null)
         {
             var s = _isActiveSlot
-                ? new SoundStyle("Terramon/Sounds/pkball_consume") { Volume = 0.5f }
-                : new SoundStyle("Terramon/Sounds/pkmn_recall") { Volume = 0.8f };
+                ? new SoundStyle("Terramon/Sounds/pkball_consume") { Volume = 0.35f }
+                : new SoundStyle("Terramon/Sounds/pkmn_recall") { Volume = 0.375f };
             SoundEngine.PlaySound(s);
             if (!_isActiveSlot)
             {
-                var cry = new SoundStyle("Terramon/Sounds/Cries/" + Terramon.DatabaseV2.GetPokemonName(Data.ID))
-                    { Volume = 0.6f };
+                var cry = new SoundStyle("Terramon/Sounds/Cries/" + Data.InternalName)
+                    { Volume = 0.2525f };
                 SoundEngine.PlaySound(cry);
             }
 
@@ -408,9 +413,7 @@ public class PartySidebarSlot : UIImage
 
         if (IsMouseHovering && !PartyDisplay.IsDraggingSlot)
         {
-            if (Data == null) return;
-            Main.LocalPlayer.mouseInterface = true;
-            if (_isHovered) return;
+            if (Data == null || _isHovered) return;
             _isHovered = true;
             if (!_justEndedDragging) SoundEngine.PlaySound(SoundID.MenuTick);
             UpdateSprite(true);
@@ -462,7 +465,7 @@ public class PartySidebarSlot : UIImage
         else
         {
             _nameText.SetText(data.DisplayName);
-            _levelText.SetText("Lv. " + data.Level);
+            _levelText.SetText(Language.GetText("Mods.Terramon.GUI.Party.LevelDisplay").WithFormatArgs(data.Level));
             /*_heldItemBox = new UIBlendedImage(ModContent.Request<Texture2D>(
                 "Terramon/Assets/GUI/Party/HeldItemBox" + (_isActiveSlot ? "Active" : string.Empty),
                 AssetRequestMode.ImmediateLoad));
@@ -473,9 +476,7 @@ public class PartySidebarSlot : UIImage
                 AssetRequestMode.ImmediateLoad));
             _spriteBox.Top.Set(10, 0f);
             _spriteBox.Left.Set(59, 0f);
-            var sprite = new UIImage(ModContent.Request<Texture2D>(
-                $"Terramon/Assets/Pokemon/{Terramon.DatabaseV2.GetPokemonName(data.ID)}{(!string.IsNullOrEmpty(data.Variant) ? "_" + data.Variant : string.Empty)}_Mini{(data.IsShiny ? "_S" : string.Empty)}",
-                AssetRequestMode.ImmediateLoad))
+            var sprite = new UIImage(data.GetMiniSprite())
             {
                 ImageScale = 0.7f
             };

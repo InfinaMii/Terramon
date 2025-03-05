@@ -1,5 +1,4 @@
-﻿using Terramon.Content.NPCs.Pokemon;
-using Terramon.Core.NPCComponents;
+﻿using Terramon.Core.NPCComponents;
 using Terraria.DataStructures;
 
 // ReSharper disable UnassignedField.Global
@@ -21,6 +20,9 @@ public class NPCVariants : NPCComponent
     public override void OnSpawn(NPC npc, IEntitySource source)
     {
         base.OnSpawn(npc, source);
+        
+        if (!Enabled) return;
+        
         var modNpc = (PokemonNPC)npc.ModNPC;
 
         //TODO: add array, iterate through each variant, etc.
@@ -30,7 +32,7 @@ public class NPCVariants : NPCComponent
 
         var condition = Condition switch
         {
-            "Christmas" => Main.xMas ? 1 : 0,
+            "Christmas" => Main.xMas.ToInt(),
             _ => 1 //if no condition given assume it should happen always
         };
 

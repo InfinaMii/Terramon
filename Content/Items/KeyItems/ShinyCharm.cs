@@ -1,9 +1,7 @@
-namespace Terramon.Content.Items.KeyItems;
+namespace Terramon.Content.Items;
 
 public class ShinyCharm : KeyItem
 {
-    protected override bool Obtainable => false;
-
     public override void SetDefaults()
     {
         base.SetDefaults();

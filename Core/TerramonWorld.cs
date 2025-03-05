@@ -1,17 +1,20 @@
-using System.Collections.Generic;
+using EasyPacketsLib;
 using ReLogic.Utilities;
-using Terramon.Content.Buffs;
+using Terramon.Content.GUI;
+using Terramon.Content.Packets;
+using Terramon.Core.Loaders.UILoading;
 using Terraria.Audio;
 using Terraria.ModLoader.IO;
 
 namespace Terramon.Core;
 
-public class TerramonWorld : ModSystem
+public partial class TerramonWorld : ModSystem
 {
     private static SlotId _currentSlotId;
     private static float _originalMusicVolume;
-    private static bool _isPlayingSoundLastFrame;
-    private PokedexService _worldDex;
+    private static bool _soundEndedLastFrame;
+    private static float _lastMusicVolume;
+    private static PokedexService _worldDex;
 
     /// <summary>
     ///     Plays a sound while temporarily lowering the background music volume.
@@ -23,13 +26,17 @@ public class TerramonWorld : ModSystem
     public static void PlaySoundOverBGM(in SoundStyle style, float volumeMultiplier = 0.45f)
     {
         var slotId = SoundEngine.PlaySound(style);
-        if (Main.musicVolume <= 0) return;
+        if (Main.soundVolume <= 0) return;
+        var reducedVolume = Main.soundVolume * volumeMultiplier;
+        if (Main.musicVolume <= reducedVolume) return;
         _originalMusicVolume = Main.musicVolume;
         _currentSlotId = slotId;
-        Main.musicVolume = Main.soundVolume * volumeMultiplier;
+        Main.musicVolume = reducedVolume;
+        _lastMusicVolume = Main.musicVolume;
     }
 
-    public void UpdateWorldDex(int id, PokedexEntryStatus status, string lastUpdatedBy = null, bool force = false)
+    public static void UpdateWorldDex(int id, PokedexEntryStatus status, string lastUpdatedBy = null,
+        bool force = false, bool netSend = true)
     {
         if (_worldDex == null) return;
         var hasEntry = _worldDex.Entries.TryGetValue(id, out var entry);
@@ -38,29 +45,22 @@ public class TerramonWorld : ModSystem
         if (entry.Status != PokedexEntryStatus.Registered)
             entry.LastUpdatedBy = lastUpdatedBy;
         entry.Status = status;
+        if (netSend && Main.netMode == NetmodeID.MultiplayerClient) // Sync the World Dex on all clients in multiplayer
+            Terramon.Instance.SendPacket(new UpdateWorldDexRpc([((ushort)id, entry)]),
+                ignoreClient: Main.myPlayer, forward: true);
     }
 
-    public override void PostUpdateEverything()
+    public static PokedexService GetWorldDex()
     {
-        if (!SoundEngine.TryGetActiveSound(_currentSlotId, out var activeSound))
-        {
-            if (!_isPlayingSoundLastFrame) return;
-            _isPlayingSoundLastFrame = false;
-            _currentSlotId = default;
-            
-            Tween.To(() => Main.musicVolume, x => { Main.musicVolume = x; }, _originalMusicVolume, 0.75f);
-
-            return;
-        }
-
-        if (!activeSound.IsPlaying) return;
-        _isPlayingSoundLastFrame = true;
+        return _worldDex;
     }
 
     public override void PreSaveAndQuit()
     {
-        Terramon.ResetPartyUI(true);
-        Main.LocalPlayer.ClearBuff(ModContent.BuffType<PokemonCompanion>());
+        if (TooltipOverlay.IsHoldingPokemon())
+            TooltipOverlay.ClearHeldPokemon(true);
+        
+        Terramon.ResetUI();
     }
 
     public override void ClearWorld()
@@ -73,12 +73,13 @@ public class TerramonWorld : ModSystem
         var entriesList = new List<int[]>();
         foreach (var entry in _worldDex.Entries)
         {
+            if (entry.Value.Status == PokedexEntryStatus.Undiscovered) continue;
             var lastUpdatedBy = entry.Value.LastUpdatedBy;
             var entryDataLength = 2 + (entry.Value.LastUpdatedBy?.Length ?? 0);
             var entryData = new int[entryDataLength];
             entryData[0] = entry.Key;
             entryData[1] = (byte)entry.Value.Status;
-            if (entryDataLength > 2 && lastUpdatedBy != null)
+            if (entryDataLength > 2) // If there is a lastUpdatedBy string
                 for (var i = 0; i < lastUpdatedBy.Length; i++)
                     entryData[i + 2] = lastUpdatedBy[i];
             entriesList.Add(entryData);
@@ -104,5 +105,50 @@ public class TerramonWorld : ModSystem
 
             _worldDex.Entries[id] = new PokedexEntry(status, lastUpdatedBy);
         }
+    }
+
+    public override void Load()
+    {
+        if (Main.dedServ) return;
+        On_Main.DoUpdate += MainDoUpdate_Detour;
+        On_Main.DoDraw += MainDoDraw_Detour;
+    }
+
+    private static void MainDoUpdate_Detour(On_Main.orig_DoUpdate orig, Main self, ref GameTime gameTime)
+    {
+        // Set GameTime and MousePosition for UILoader
+        UILoader.GameTime = gameTime;
+
+        orig(self, ref gameTime);
+
+        if (Main.musicVolume != _lastMusicVolume)
+        {
+            // Volume is changed by something else, abort the fade
+            _currentSlotId = default;
+            _soundEndedLastFrame = false;
+        }
+
+        if (!SoundEngine.TryGetActiveSound(_currentSlotId, out var activeSound))
+        {
+            if (!_soundEndedLastFrame) return;
+            _soundEndedLastFrame = false;
+            _currentSlotId = default;
+
+            // Fade back in the music volume
+            Tween.To(() => Main.musicVolume, x => { Main.musicVolume = x; }, _originalMusicVolume, 0.75f);
+
+            return;
+        }
+
+        if (!activeSound.IsPlaying) return;
+        _soundEndedLastFrame = true;
+    }
+    
+    private static void MainDoDraw_Detour(On_Main.orig_DoDraw orig, Main self, GameTime gameTime)
+    {
+        orig(self, gameTime);
+
+        // Update all active tweens
+        Tween.DoUpdate(gameTime);
     }
 }
