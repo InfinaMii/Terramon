@@ -1,24 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using EasyPacketsLib;
-using Microsoft.Extensions.Primitives;
-using Terramon.Content.Buffs;
-using Terramon.Content.GUI;
 using Terramon.Content.Items;
 using Terramon.Content.Items.PokeBalls;
-using Terramon.Content.Packets;
-using Terraria.Localization;
-using Terraria.ModLoader.IO;
-using Terraria;
-using Terramon.Content.Items.Vitamins;
-using Humanizer;
-using Terramon.Content.Items.Evolutionary;
-using Terramon.Content.Items.Vanity;
 using Terramon.ID;
 using Terraria.Audio;
-using Terraria.DataStructures;
-using Terraria.ID;
 
 namespace Terramon.Core;
 
@@ -40,8 +25,9 @@ public class TerramonQuest()
 
 public struct QuestCondition
 {
+    //TODO: add multi-type
     public int? PokemonId;
-    public int? PokemonType;
+    public PokemonType? PokemonType;
 
     public int? UseItem;
     public int? GatherItem;
@@ -68,7 +54,7 @@ public class QuestManager
             Key = "TestQuest02",
             Name = "Catch 2 Fire Type Pokemon",
             Conditions = new QuestCondition{
-                PokemonType = TypeID.Fire
+                PokemonType = PokemonType.Fire
             },
             Amount = 2,
             RewardItemId = ModContent.ItemType<FireStone>(),
@@ -191,7 +177,7 @@ public class QuestManager
                 (!isRandom || AcceptedRandQuests [index]))
             {
                 Main.NewText($"Quest Complete! \"{quest.Name}\"", Color.GreenYellow);
-                TerramonWorld.PlaySoundOverBGM(new SoundStyle("Terramon/Sounds/ls_catch_fanfare"));
+                TerramonWorld.PlaySoundOverBGM(new SoundStyle("Terramon/Sounds/pkball_catch_pla"));
             }
         }
         
