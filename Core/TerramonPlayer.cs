@@ -170,6 +170,9 @@ public class TerramonPlayer : ModPlayer
                 ActiveSlot = -1;
             else
                 ActiveSlot = _activeSlot;
+
+            if (Party[ActiveSlot] == null)
+                ActiveSlot = NextFreePartyIndex() - 1;
         }
         else if (KeybindSystem.NextPokemonKeybind.JustPressed)
         {
