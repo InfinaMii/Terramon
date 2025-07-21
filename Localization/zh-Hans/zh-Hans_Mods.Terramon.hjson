@@ -147,6 +147,11 @@ Configs: {
 			Label: 彩虹效果增益文本
 			Tooltip: 宝可梦伙伴的增益名称将循环显示彩虹颜色
 		}
+
+		ResourcePackCompatibility: {
+			// Label: Resource Pack Compatibility
+			// Tooltip: Whether the GUI should use vanilla assets in order to match the current resource pack
+		}
 	}
 
 	GameplayConfig: {
@@ -218,6 +223,13 @@ Configs: {
 		Stage1.Label: 第一阶段进化/阶段 1 宝可梦
 		Stage2.Label: 第二阶段进化/阶段 2 宝可梦
 		Legendary.Label: 传说/幻之宝可梦
+	}
+
+	ResourceCompat: {
+		// Tooltip: ""
+		// Auto.Label: Auto
+		// Forced.Label: Forced
+		// Disabled.Label: Disabled
 	}
 }
 

@@ -147,6 +147,11 @@ Configs: {
 			Label: Regenbogen-Buff-Text
 			Tooltip: Der Name des Pokémon-Begleiter-Buffs wird durch die Regenbogenfarben rotieren
 		}
+
+		ResourcePackCompatibility: {
+			// Label: Resource Pack Compatibility
+			// Tooltip: Whether the GUI should use vanilla assets in order to match the current resource pack
+		}
 	}
 
 	GameplayConfig: {
@@ -218,6 +223,13 @@ Configs: {
 		Stage1.Label: Erstentwickelte / Stufe-1-Pokémon
 		Stage2.Label: Zweitentwickelte / Stufe-2-Pokémon
 		Legendary.Label: Legendäre / Mysteriöse Pokémon
+	}
+
+	ResourceCompat: {
+		// Tooltip: ""
+		// Auto.Label: Auto
+		// Forced.Label: Forced
+		// Disabled.Label: Disabled
 	}
 }
 

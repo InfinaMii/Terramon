@@ -147,6 +147,11 @@ Configs: {
 			Label: Texto arcoíris para el efecto
 			Tooltip: El nombre del efecto para el Compañero Pokémon irá a través de los colores del arcoíris
 		}
+
+		ResourcePackCompatibility: {
+			// Label: Resource Pack Compatibility
+			// Tooltip: Whether the GUI should use vanilla assets in order to match the current resource pack
+		}
 	}
 
 	GameplayConfig: {
@@ -214,6 +219,13 @@ Configs: {
 		Stage1.Label: Pokémon de primera evolución/etapa 1
 		Stage2.Label: Pokémon de segunda evolución/etapa 2
 		Legendary.Label: Pokémon legendarios/singulares
+	}
+
+	ResourceCompat: {
+		// Tooltip: ""
+		// Auto.Label: Auto
+		// Forced.Label: Forced
+		// Disabled.Label: Disabled
 	}
 }
 
