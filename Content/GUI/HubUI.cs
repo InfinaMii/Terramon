@@ -392,7 +392,7 @@ public class HubUI : SmartUIState
 
             var currentRange = _pokedexPage.GetPageRange();
             if ((!dirIsRight && currentRange.Item1 == 1) ||
-                (dirIsRight && currentRange.Item2 == Terramon.LoadedPokemonCount))
+                (dirIsRight && currentRange.Item2 == Terramon.HighestPokemonID))
             {
                 SoundEngine.PlaySound(new SoundStyle("Terramon/Sounds/button_locked")
                 {
