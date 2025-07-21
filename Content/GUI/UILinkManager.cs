@@ -1,3 +1,4 @@
+using System.Reflection;
 using Terramon.Content.Configs;
 using Terramon.Content.GUI;
 using Terramon.Core.Systems.PokemonDirectUseSystem;
@@ -177,6 +178,11 @@ public class UILinkManager : ILoadable
             partyPage.LinkMap[TerramonPointID.HubUI].Right = reducedMotion && !compressedState ? TerramonPointID.Party0 : TerramonPointID.PartyCollapse;
             partyPage.LinkMap[TerramonPointID.HubUI].Up = hasAutoTrash && Main.GameModeInfo.IsJourneyMode ? GamepadPointID.CreativeMenuToggle : 40;
         };
+
+        partyPage.TravelEvent += delegate
+        {
+            UILinkPointNavigator.ForceMovementCooldown(PlayerInput.CurrentProfile.InventoryMoveCD);
+        };
         
         UILinkPointNavigator.RegisterPage(partyPage, TerramonPageID.Party);
     }
@@ -294,6 +300,11 @@ public class UILinkManager : ILoadable
                 TerramonPlayer.LocalPlayer.ColorPickerHSL.Y = MathHelper.Clamp(TerramonPlayer.LocalPlayer.ColorPickerHSL.Y + stickX, 0f, 1f);
             else if (currentPoint == TerramonPointID.PCColorV)
                 TerramonPlayer.LocalPlayer.ColorPickerHSL.Z = MathHelper.Clamp(TerramonPlayer.LocalPlayer.ColorPickerHSL.Z + stickX, 0f, 1f);
+        };
+
+        pcPage.TravelEvent += delegate
+        {
+            UILinkPointNavigator.ForceMovementCooldown(PlayerInput.CurrentProfile.InventoryMoveCD);
         };
         
         UILinkPointNavigator.RegisterPage(pcPage, TerramonPageID.PC);
