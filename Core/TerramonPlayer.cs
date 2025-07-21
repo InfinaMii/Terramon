@@ -161,6 +161,7 @@ public class TerramonPlayer : ModPlayer
     private void ProcessActiveMonTriggers()
     {
         bool shouldPlaySound = false;
+        var prevSlot = _activeSlot;
 
         if (KeybindSystem.TogglePokemonKeybind.JustPressed)
         {
@@ -172,20 +173,21 @@ public class TerramonPlayer : ModPlayer
         }
         else if (KeybindSystem.NextPokemonKeybind.JustPressed)
         {
-            shouldPlaySound = true;
             if (_hasPokemon)
-                ActiveSlot = _activeSlot == 5 ? 0 : _activeSlot + 1;
+                ActiveSlot = _activeSlot == NextFreePartyIndex() - 1 ? 0 : _activeSlot + 1;
             else
                 ActiveSlot = _activeSlot;
         }
         else if (KeybindSystem.PrevPokemonKeybind.JustPressed)
         {
-            shouldPlaySound = true;
             if (_hasPokemon)
-                ActiveSlot = _activeSlot == 0 ? 5 : _activeSlot - 1;
+                ActiveSlot = _activeSlot == 0 ? NextFreePartyIndex() - 1 : _activeSlot - 1;
             else
                 ActiveSlot = _activeSlot;
         }
+
+        if (prevSlot != _activeSlot)
+            shouldPlaySound = true;
 
         if (!shouldPlaySound) return;
         if (_hasPokemon)
