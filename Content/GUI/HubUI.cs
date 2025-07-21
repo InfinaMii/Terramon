@@ -30,7 +30,9 @@ public class HubUI : SmartUIState
     private static readonly Asset<Texture2D> PlayerDexFilterTexture;
     private static readonly Asset<Texture2D> WorldDexFilterTexture;
     private static readonly Asset<Texture2D> PlayerShinyDexFilterTexture;
-    public static readonly Asset<Texture2D> SmallButtonHoverTexture;
+    public static Asset<Texture2D> SmallButtonHoverTexture;
+    private static Asset<Texture2D> PageButtonLeftTexture;
+    private static Asset<Texture2D> PageButtonRightTexture;
 
     private static bool _playerInventoryOpen;
     private UIText _caughtAmountText;
@@ -48,6 +50,10 @@ public class HubUI : SmartUIState
     private UIText _seenAmountText;
     private UIHoverImage _seenBallIcon;
 
+    private static PokedexPageButton PageButtonLeft;
+    private static PokedexPageButton PageButtonRight;
+    
+
     static HubUI()
     {
         // Don't run this on the server
@@ -62,7 +68,7 @@ public class HubUI : SmartUIState
         PlayerDexFilterTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/Hub/PlayerDexFilter");
         WorldDexFilterTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/Hub/WorldDexFilter");
         PlayerShinyDexFilterTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/Hub/PlayerShinyDexFilter");
-        SmallButtonHoverTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/Hub/SmallButtonHover");
+        SetAssets(false);
 
         // Prevents the player from closing the inventory while the hub UI is active, instead closing the hub UI itself
         On_Player.ToggleInv += static (orig, self) =>
@@ -191,11 +197,11 @@ public class HubUI : SmartUIState
         };
 
         // Page buttons for the Pokédex
-        var pageButtonLeft = new PokedexPageButton(_pokedexPage, false);
-        AddElement(pageButtonLeft, 6, 65, 38, 38, _mainPanel);
+        PageButtonLeft = new PokedexPageButton(_pokedexPage, false, PageButtonLeftTexture);
+        AddElement(PageButtonLeft, 6, 65, 38, 38, _mainPanel);
 
-        var pageButtonRight = new PokedexPageButton(_pokedexPage, true);
-        AddElement(pageButtonRight, 53, 65, 38, 38, _mainPanel);
+        PageButtonRight = new PokedexPageButton(_pokedexPage, true, PageButtonRightTexture);
+        AddElement(PageButtonRight, 53, 65, 38, 38, _mainPanel);
 
         // Range panel (amount of Pokémon shown on the current page)
         _rangePanel = new UIPanel
@@ -346,6 +352,38 @@ public class HubUI : SmartUIState
         backPanel.SetSnapPoint("Back", 0);
 
         Append(backPanel);
+    }
+    
+    public static void SetAssets(bool useVanillaAssets)
+    {
+
+        /*ListViewButtonTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/PC/ListViewButton");
+        SingleViewButtonTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/PC/SingleViewButton");
+        SmallerButtonHoverTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/PC/SmallerButtonHover");*/
+        PageButtonLeftTexture = useVanillaAssets
+            ? Main.Assets.Request<Texture2D>("Images/UI/Bestiary/Button_Back")
+            : ModContent.Request<Texture2D>("Terramon/Assets/GUI/Hub/PageButtonLeft");
+        PageButtonRightTexture = useVanillaAssets
+            ? Main.Assets.Request<Texture2D>("Images/UI/Bestiary/Button_Forward")
+            : ModContent.Request<Texture2D>("Terramon/Assets/GUI/Hub/PageButtonRight");
+        SmallButtonHoverTexture = useVanillaAssets
+            ? Main.Assets.Request<Texture2D>("Images/UI/Bestiary/Button_Border")
+            : ModContent.Request<Texture2D>("Terramon/Assets/GUI/Hub/SmallButtonHover");
+
+
+        if (PageButtonLeft != null)
+        {
+            PageButtonLeft.SetImage(PageButtonLeftTexture);
+            PageButtonLeft.SetHoverImage(SmallButtonHoverTexture);
+            PageButtonLeft.SetImageScale(useVanillaAssets ? 1.35f : 1f);
+        }
+
+        if (PageButtonRight != null)
+        {
+            PageButtonRight.SetImage(PageButtonRightTexture);
+            PageButtonRight.SetHoverImage(SmallButtonHoverTexture);
+            PageButtonRight.SetImageScale(useVanillaAssets ? 1.35f : 1f);
+        }
     }
 
     private static void FadedMouseOver(UIMouseEvent evt, UIElement listeningElement)
@@ -804,7 +842,7 @@ internal sealed class PokedexEntryIcon : UIPanel
 {
     private const int IconSize = 70;
     private static readonly Asset<Texture2D> QuestionMarkTexture;
-    private static readonly Asset<Texture2D> HoverTexture;
+    private static Asset<Texture2D> HoverTexture;
     private readonly UIText _debugText;
 
     private readonly UIImage _icon;
@@ -817,6 +855,12 @@ internal sealed class PokedexEntryIcon : UIPanel
     {
         QuestionMarkTexture = ModContent.Request<Texture2D>("Terraria/Images/UI/Bestiary/Icon_Locked");
         HoverTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/Hub/PokedexEntryIconHover");
+        SetAssets(false);
+    }
+    
+    public static void SetAssets(bool useVanillaAssets)
+    {
+        HoverTexture = useVanillaAssets ? null : ModContent.Request<Texture2D>("Terramon/Assets/GUI/Hub/PokedexEntryIconHover");
     }
 
     public PokedexEntryIcon(ushort pokemon = 0)
@@ -920,7 +964,7 @@ internal sealed class PokedexEntryIcon : UIPanel
     protected override void DrawSelf(SpriteBatch spriteBatch)
     {
         base.DrawSelf(spriteBatch);
-        if (BorderColor != Color.Black || HighlightedStatus == _entry?.Status)
+        if (HoverTexture != null && (BorderColor != Color.Black || HighlightedStatus == _entry?.Status))
         {
             // Draw the hover texture
             var dimensions = GetDimensions();
@@ -952,19 +996,10 @@ internal sealed class PokedexEntryIcon : UIPanel
 
 internal sealed class PokedexPageButton : UIHoverImageButton
 {
-    private static readonly Asset<Texture2D> PageButtonLeftTexture;
-    private static readonly Asset<Texture2D> PageButtonRightTexture;
-
     private readonly PokedexPageDisplay _pageDisplay;
     private readonly bool _right;
     private bool _lastXDown;
     private bool _lastZDown;
-
-    static PokedexPageButton()
-    {
-        PageButtonLeftTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/Hub/PageButtonLeft");
-        PageButtonRightTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/Hub/PageButtonRight");
-    }
 
     /// <summary>
     ///     Creates a new page button that controls a <see cref="PokedexPageDisplay" />. Allows the player to navigate between
@@ -975,8 +1010,11 @@ internal sealed class PokedexPageButton : UIHoverImageButton
     ///     Whether this button is the right button or not. This controls whether the button will navigate to
     ///     the next or previous page.
     /// </param>
-    public PokedexPageButton(PokedexPageDisplay pageDisplay, bool right) : base(
-        right ? PageButtonRightTexture : PageButtonLeftTexture, string.Empty)
+    /// <param name="texture">
+    ///     The texture to use for this button.
+    /// </param>
+    public PokedexPageButton(PokedexPageDisplay pageDisplay, bool right, Asset<Texture2D> texture) : base(
+        texture, string.Empty)
     {
         _pageDisplay = pageDisplay;
         _right = right;

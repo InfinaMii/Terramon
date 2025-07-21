@@ -38,6 +38,10 @@ public class UIHoverImageButton : TransformableUIButton
     {
         _isActivated = active;
     }
+    public void SetImageScale(float scale)
+    {
+        Scale = scale;
+    }
 
     public override void Update(GameTime gameTime)
     {

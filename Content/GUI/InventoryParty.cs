@@ -303,11 +303,11 @@ public class InventoryParty : SmartUIState
 
 internal sealed class CustomPartyItemSlot : UIImage
 {
-    private static readonly Asset<Texture2D> PartySlotBgEmptyTexture;
-    private static readonly Asset<Texture2D> PartySlotBgTexture;
-    private static readonly Asset<Texture2D> PartySlotBgClickedTexture;
-    private static readonly Asset<Texture2D> PartySlotBgEmptyHoverTexture;
-    private static readonly Asset<Texture2D> PartySlotBgHoverTexture;
+    private static Asset<Texture2D> PartySlotBgEmptyTexture;
+    private static Asset<Texture2D> PartySlotBgTexture;
+    private static Asset<Texture2D> PartySlotBgClickedTexture;
+    private static Asset<Texture2D> PartySlotBgEmptyHoverTexture;
+    private static Asset<Texture2D> PartySlotBgHoverTexture;
 
     private static CustomPartyItemSlot _initialSlot;
 
@@ -319,11 +319,26 @@ internal sealed class CustomPartyItemSlot : UIImage
 
     static CustomPartyItemSlot()
     {
-        PartySlotBgEmptyTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/Inventory/PartySlotBgEmpty");
-        PartySlotBgTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/Inventory/PartySlotBg");
-        PartySlotBgClickedTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/Inventory/PartySlotBgClicked");
-        PartySlotBgEmptyHoverTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/Inventory/PartySlotBgEmptyHover");
-        PartySlotBgHoverTexture = ModContent.Request<Texture2D>("Terramon/Assets/GUI/Inventory/PartySlotBgHover");
+        SetAssets(false);
+    }
+
+    public static void SetAssets(bool useVanillaAssets)
+    {
+        PartySlotBgEmptyTexture = useVanillaAssets
+            ? Main.Assets.Request<Texture2D>("Images/Inventory_Back4")
+            : ModContent.Request<Texture2D>("Terramon/Assets/GUI/Inventory/PartySlotBgEmpty");
+        PartySlotBgTexture = useVanillaAssets
+            ? Main.Assets.Request<Texture2D>("Images/Inventory_Back4")
+            : ModContent.Request<Texture2D>("Terramon/Assets/GUI/Inventory/PartySlotBg");
+        PartySlotBgClickedTexture = useVanillaAssets
+            ? Main.Assets.Request<Texture2D>("Images/Inventory_Back9")
+            : ModContent.Request<Texture2D>("Terramon/Assets/GUI/Inventory/PartySlotBgClicked");
+        PartySlotBgEmptyHoverTexture = useVanillaAssets
+            ? Main.Assets.Request<Texture2D>("Images/Inventory_Back14")
+            : ModContent.Request<Texture2D>("Terramon/Assets/GUI/Inventory/PartySlotBgEmptyHover");
+        PartySlotBgHoverTexture = useVanillaAssets
+            ? Main.Assets.Request<Texture2D>("Images/Inventory_Back14")
+            : ModContent.Request<Texture2D>("Terramon/Assets/GUI/Inventory/PartySlotBgHover");
     }
 
     public CustomPartyItemSlot(int index) : base(PartySlotBgEmptyTexture)
@@ -636,6 +651,9 @@ internal sealed class CustomPartyItemSlot : UIImage
             }
         }
 
+        var mainColor = Color;
+        Color *= 0.8f;
         base.Draw(spriteBatch);
+        Color = mainColor;
     }
 }

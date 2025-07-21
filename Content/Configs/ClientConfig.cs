@@ -21,6 +21,10 @@ public class ClientConfig : ModConfig
 
     [DefaultValue(false)] [ReloadRequired]
     public bool ReducedMotion;
+    
+    [DefaultValue(ResourceCompat.Auto)]
+    [ReloadRequired]
+    public ResourceCompat ResourcePackCompatibility;
 
     [DefaultValue(true)]
     public bool ShowPetNameOnHover;
@@ -41,4 +45,11 @@ public enum ModIconType
     Main,
     Alternate,
     Classic
+}
+
+public enum ResourceCompat
+{
+    Auto,
+    Forced,
+    Disabled
 }
