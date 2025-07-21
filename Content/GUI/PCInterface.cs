@@ -170,6 +170,9 @@ public class PCInterface : SmartUIState
                 _renameBoxButton.SetText("Cancel");
                 _colorPicker.SetColor(GetColorForCurrentBox(), GetDefaultColorForCurrentBox());
                 Append(_colorPicker);
+                
+                if (UILinkPointNavigator.InUse)
+                    UILinkPointNavigator.ChangePoint(TerramonPointID.PCColorH);
             }
             else
             {

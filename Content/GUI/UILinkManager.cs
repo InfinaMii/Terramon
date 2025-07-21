@@ -303,7 +303,10 @@ public class UILinkManager : ILoadable
 
         pcPage.TravelEvent += delegate
         {
-            UILinkPointNavigator.ForceMovementCooldown(PlayerInput.CurrentProfile.InventoryMoveCD);
+            if (UILinkPointNavigator.CurrentPoint >= TerramonPointID.PCColorH && UILinkPointNavigator.CurrentPoint <= TerramonPointID.PCColorV)
+                UILinkPointNavigator.ForceMovementCooldown(15);
+            else
+                UILinkPointNavigator.ForceMovementCooldown(PlayerInput.CurrentProfile.InventoryMoveCD);
         };
         
         UILinkPointNavigator.RegisterPage(pcPage, TerramonPageID.PC);
