@@ -1,7 +1,12 @@
 Buffs: {
 	PokemonCompanion: {
-		// DisplayName: Pokémon companion
+		// DisplayName: Pokémon Companion
 		// Description: "{0} is following you around!"
+	}
+
+	PokeBannerBuff: {
+		// DisplayName: Pokémon Banner
+		// Description: Bonuses active for nearby companions:
 	}
 }
 
@@ -67,8 +72,29 @@ Commands: {
 	}
 
 	PC: {
-		// Description: Opens the Pokémon Storage System from anywhere
+		// Description: Opens the Pokémon Storage System (PC) from anywhere
 		// Usage: /pc
+	}
+
+	Dex: {
+		// Description: Opens the Pokédex
+		// Usage: /dex
+	}
+
+	Upgrade: {
+		// Description: Transfer Pokémon from the pre-release version
+		// Usage: /upgrade
+		// TypeResolveError: One or more required legacy types were not found! Please report this issue to the Terramon developers
+		// NopUpgrade: No Pokémon were found in the inventory to upgrade
+		// Success: Successfully upgraded and transferred {0} Pokémon to {1}'s PC
+	}
+
+	BannerData: {
+		// Description: Change the tier of the currently held Pokémon banner
+		// Usage: /bannerset <tier>
+		// NotHoldingBanner: The currently held item is not a Pokémon banner
+		// ParseErrorBannerTier: Failed to parse tier argument as BannerTier
+		// Success: Successfully changed the banner tier for the held banner to {0}
 	}
 }
 
@@ -100,6 +126,11 @@ Configs: {
 		ReducedMotion: {
 			// Label: (Inventory Slots) Reduced Motion
 			// Tooltip: Disables the sliding animation when toggling inventory party slots
+		}
+
+		ShowPetNameOnHover: {
+			// Label: Show Pokémon Companion Name on Hover
+			// Tooltip: Whether to show the Pokémon companion's name when hovering over it in the world
 		}
 
 		ModIconType: {
@@ -134,6 +165,15 @@ Configs: {
 				'''
 				Multiplies the rate at which Pokémon spawn in the wild
 				[c/F2A754:If set to 0, Pokémon will not spawn at all]
+				''' */
+		}
+
+		NonPokemonSpawnRateMultiplier: {
+			// Label: Non-Pokémon Spawn Rate Multiplier
+			/* Tooltip:
+				'''
+				Multiplies the rate at which non-Pokémon NPCs spawn, including modded ones
+				[c/F2A754:If set to 0, regular Terraria enemies and other modded NPCs will not spawn at all]
 				''' */
 		}
 
@@ -197,7 +237,12 @@ GUI: {
 			PV: {0}/{1}
 			EXP: MAX
 			'''
+		// SlotTooltipPCMode: "[c/FFFFFF:In Party]"
+		// SlotTooltipPCModeActive: "[c/FFFFFF:In Party (Active)]"
+		// CannotRemoveLastPokemon: Your party must have at least one Pokémon!
 	}
+
+	// PC.RenameLabel: Rename Box
 
 	Starter: {
 		// Title: Welcome to the world of Pokémon! Thank you for installing the Terramon mod!
@@ -247,13 +292,18 @@ GUI: {
 		Weight: Poids
 		Entry: Entrée
 	}
+
+	ControllerHints: {
+		// Release: Release
+		// SwitchPage: Switch page
+	}
 }
 
 CommonTooltips: {
 	/* Apricorn:
 		'''
-		A special fruit seemingly related to berries.
-		Can be used to craft assorted Poké Balls.
+		A special fruit seemingly related to berries
+		Can be used to craft assorted Poké Balls
 		''' */
 	// EvolutionaryItem: Evolutionary item
 	// KeyItem: Key item
@@ -273,8 +323,8 @@ Items: {
 		// DisplayName: Poké Ball
 		/* Tooltip:
 			'''
-			A device for catching wild Pokémon.
-			It is thrown like a ball at the target.
+			A device for catching wild Pokémon
+			It is thrown like a ball at the target
 			''' */
 		// CatchRate: 1x catch rate
 	}
@@ -288,8 +338,8 @@ Items: {
 		// DisplayName: Great Ball
 		/* Tooltip:
 			'''
-			A good, high-performance Poké Ball.
-			Provides a higher Pokémon catch rate than a standard Poké Ball.
+			A good, high-performance Poké Ball
+			Provides a higher Pokémon catch rate than a standard Poké Ball
 			''' */
 		// CatchRate: 1.5x catch rate
 	}
@@ -303,8 +353,8 @@ Items: {
 		// DisplayName: Ultra Ball
 		/* Tooltip:
 			'''
-			An ultra-high-performance Poké Ball.
-			Provides a higher Pokémon catch rate than a Great Ball.
+			An ultra-high-performance Poké Ball
+			Provides a higher Pokémon catch rate than a Great Ball
 			''' */
 		// CatchRate: 2x catch rate
 	}
@@ -318,8 +368,8 @@ Items: {
 		// DisplayName: Master Ball
 		/* Tooltip:
 			'''
-			The best Poké Ball with the ultimate level of performance.
-			It will catch any wild Pokémon without fail.
+			The best Poké Ball with the ultimate level of performance
+			It will catch any wild Pokémon without fail
 			''' */
 		// CatchRate: 100% catch rate
 	}
@@ -333,8 +383,8 @@ Items: {
 		// DisplayName: Premier Ball
 		/* Tooltip:
 			'''
-			A somewhat rare Poké Ball.
-			It was made as a commemorative item used to celebrate an event of some sort.
+			A somewhat rare Poké Ball
+			It was made as a commemorative item used to celebrate an event of some sort
 			''' */
 		// CatchRate: 1x catch rate
 	}
@@ -348,8 +398,8 @@ Items: {
 		// DisplayName: Cherish Ball
 		/* Tooltip:
 			'''
-			A quite rare Poké Ball.
-			It has been specially crafted to commemorate an occasion of some sort.
+			A quite rare Poké Ball
+			It has been specially crafted to commemorate an occasion of some sort
 			''' */
 		// CatchRate: 1x catch rate
 	}
@@ -363,8 +413,8 @@ Items: {
 		// DisplayName: Aether Ball
 		/* Tooltip:
 			'''
-			An ethereal Poké Ball infused with shimmering energy.
-			It is said to have a calming effect on wild Pokémon.
+			An ethereal Poké Ball infused with shimmering energy
+			It is said to have a calming effect on wild Pokémon
 			''' */
 		// CatchRate: 1x catch rate
 	}
@@ -378,8 +428,8 @@ Items: {
 		// DisplayName: Rare Candy
 		/* Tooltip:
 			'''
-			A candy that is packed with energy.
-			If consumed, it raises a Pokémon's level by one.
+			A candy that is packed with energy
+			If consumed, it raises a Pokémon's level by one
 			''' */
 	}
 
@@ -412,8 +462,8 @@ Items: {
 		// DisplayName: Shiny Charm
 		/* Tooltip:
 			'''
-			A shiny charm said to increase the chance of finding a Shiny Pokémon in the wild.
-			Received as a reward for obtaining all Pokémon in the Pokédex.
+			A shiny charm said to increase the chance of finding a Shiny Pokémon in the wild
+			Received as a reward for obtaining all Pokémon in the Pokédex
 			''' */
 	}
 
@@ -421,8 +471,8 @@ Items: {
 		// DisplayName: Fire Stone
 		/* Tooltip:
 			'''
-			A stone used for making certain kinds of Pokémon evolve.
-			The stone has a fiery orange heart.
+			A stone used for making certain kinds of Pokémon evolve
+			'It has a fiery orange heart'
 			''' */
 	}
 
@@ -430,8 +480,8 @@ Items: {
 		// DisplayName: Water Stone
 		/* Tooltip:
 			'''
-			A stone used for making certain kinds of Pokémon evolve.
-			It is the blue of a pool of clear water.
+			A stone used for making certain kinds of Pokémon evolve
+			'It is the blue of a pool of clear water'
 			''' */
 	}
 
@@ -439,8 +489,8 @@ Items: {
 		// DisplayName: Thunder Stone
 		/* Tooltip:
 			'''
-			A stone used for making certain kinds of Pokémon evolve.
-			The stone is inscribed with a thunderbolt pattern.
+			A stone used for making certain kinds of Pokémon evolve
+			'It is inscribed with a thunderbolt pattern'
 			''' */
 	}
 
@@ -448,8 +498,8 @@ Items: {
 		// DisplayName: Leaf Stone
 		/* Tooltip:
 			'''
-			A stone used for making certain kinds of Pokémon evolve.
-			It has an unmistakable leaf pattern.
+			A stone used for making certain kinds of Pokémon evolve
+			'It has an unmistakable leaf pattern'
 			''' */
 	}
 
@@ -457,8 +507,8 @@ Items: {
 		// DisplayName: Moon Stone
 		/* Tooltip:
 			'''
-			A stone used for making certain kinds of Pokémon evolve.
-			It is as black as the night sky.
+			A stone used for making certain kinds of Pokémon evolve
+			'It resembles the rocky texture of an asteroid'
 			''' */
 	}
 
@@ -466,8 +516,8 @@ Items: {
 		// DisplayName: Dusk Stone
 		/* Tooltip:
 			'''
-			A stone used for making certain kinds of Pokémon evolve.
-			It holds shadows as dark as can be.
+			A stone used for making certain kinds of Pokémon evolve
+			'It holds shadows as dark as can be'
 			''' */
 	}
 
@@ -475,8 +525,8 @@ Items: {
 		// DisplayName: Ice Stone
 		/* Tooltip:
 			'''
-			A stone used for making certain kinds of Pokémon evolve.
-			It has an unmistakable snowflake pattern.
+			A stone used for making certain kinds of Pokémon evolve
+			'It has an unmistakable snowflake pattern'
 			''' */
 	}
 
@@ -484,8 +534,8 @@ Items: {
 		// DisplayName: Linking Cord
 		/* Tooltip:
 			'''
-			A cord that makes you feel a strange sense of connection.
-			It's loved by certain Pokémon.
+			A cord that makes you feel a strange sense of connection
+			'It's loved by certain Pokémon'
 			''' */
 	}
 
@@ -501,8 +551,8 @@ Items: {
 		// DisplayName: Exp. Candy XS
 		/* Tooltip:
 			'''
-			A candy that is packed with energy.
-			If consumed, it grants a Pokémon a very small number of Exp. Points.
+			A candy that is packed with energy
+			If consumed, it grants a Pokémon a very small number of Exp. Points
 			''' */
 	}
 
@@ -510,8 +560,8 @@ Items: {
 		// DisplayName: Exp. Candy S
 		/* Tooltip:
 			'''
-			A candy that is packed with energy.
-			If consumed, it grants a Pokémon a small number of Exp. Points.
+			A candy that is packed with energy
+			If consumed, it grants a Pokémon a small number of Exp. Points
 			''' */
 	}
 
@@ -519,8 +569,8 @@ Items: {
 		// DisplayName: Exp. Candy M
 		/* Tooltip:
 			'''
-			A candy that is packed with energy.
-			If consumed, it grants a Pokémon a moderate number of Exp. Points.
+			A candy that is packed with energy
+			If consumed, it grants a Pokémon a moderate number of Exp. Points
 			''' */
 	}
 
@@ -528,8 +578,8 @@ Items: {
 		// DisplayName: Exp. Candy L
 		/* Tooltip:
 			'''
-			A candy that is packed with energy.
-			If consumed, it grants a Pokémon a large number of Exp. Points.
+			A candy that is packed with energy
+			If consumed, it grants a Pokémon a large number of Exp. Points
 			''' */
 	}
 
@@ -537,8 +587,8 @@ Items: {
 		// DisplayName: Exp. Candy XL
 		/* Tooltip:
 			'''
-			A candy that is packed with energy.
-			If consumed, it grants a Pokémon a very large number of Exp. Points.
+			A candy that is packed with energy
+			If consumed, it grants a Pokémon a very large number of Exp. Points
 			''' */
 	}
 
@@ -546,8 +596,8 @@ Items: {
 		// DisplayName: Shimmer-State Drive
 		/* Tooltip:
 			'''
-			Permanently unlocks a shared PC box in this world.
-			This allows for easy transfer of Pokémon between players.
+			Permanently unlocks a shared PC box in this world
+			This allows for easy transfer of Pokémon between players
 			'Property of the Aether Foundation'
 			''' */
 	}
@@ -566,18 +616,32 @@ Items: {
 		// DisplayName: Erika's Invitation
 		// Tooltip: "'L. Walter'"
 	}
+
+	PokeBannerItem: {
+		// DisplayName: "{0} Banner"
+		// ShinyDisplayName: Shiny {0} Banner
+		/* Tooltip:
+			'''
+			Nearby {0} companions grow quicker and unleash stronger attacks
+			Right click while holding to cycle through visual styles
+			''' */
+	}
 }
 
 Keybinds: {
-	// ToggleSidebar.DisplayName: Toggle Party Sidebar GUI
+	// ToggleParty.DisplayName: Party
 	// OpenPokedex.DisplayName: Pokédex
+	// OpenPokedexEntry.DisplayName: Open Pokédex Entry For Pokémon
+	// TogglePokemon.DisplayName: Toggle Active Pokémon
+	// NextPokemon.DisplayName: Summon Next Pokémon
+	// PrevPokemon.DisplayName: Summon Previous Pokémon
 }
 
 Tiles: {
 	// MusicBoxCenter.MapEntry: Music Box
 	// MusicBoxWildBattle.MapEntry: Music Box
-	// PCWhite.MapEntry: P C White
-	// PCRed.MapEntry: P C Red
+	// PCWhite.MapEntry: PC
+	// PCRed.MapEntry: PC
 }
 
 Types: {
@@ -661,6 +725,10 @@ Misc: {
 	// CatchSuccess: Gotcha! [c/{0}:{1}] was caught!
 	// CatchSuccessPC: Gotcha! [c/{0}:{1}] was caught and transferred to {2} in {3}'s PC!
 	// CatchSuccessPCNoRoom: Gotcha! [c/{0}:{1}] was caught, but there was no room in {2}'s PC!
+	// CatchMilestone3: You've obtained your 3rd {0}!
+	// CatchMilestone6: You've obtained your 6th {0}!
+	// CatchMilestone9: You've obtained your 9th {0}!
+	// CatchMilestone12: You've obtained your 12th {0}!
 	// PokedexRegistered: "{0}'s data was added to the Pokédex."
 	PCBoxDefaultName: Boîte {0}
 	// RequireStarter: Choose a starter Pokémon first!
@@ -670,4 +738,11 @@ Misc: {
 	// PokemonEvolutionReady: "{0} seems ready to evolve!"
 	// RareCandyUse: "{0} grew to Lv. {1}!"
 	// ExpCandyUse: Your Pokémon gained {0} Exp. Points!
+	// Trainer: Trainer
+	/* MOTD:
+		'''
+		You've installed {0} v{1}—enjoy! [i:{2}]
+
+		[c/C9C9E5:Make sure to customize the mod to your liking in the Mod Config menu and set up keybindings in the Controls menu.]
+		''' */
 }

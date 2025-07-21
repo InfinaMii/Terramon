@@ -1,8 +1,10 @@
 using EasyPacketsLib;
 using ReLogic.Utilities;
+using Terramon.Content.GUI;
 using Terramon.Content.Packets;
 using Terramon.Core.Loaders.UILoading;
 using Terraria.Audio;
+using Terraria.Enums;
 using Terraria.ModLoader.IO;
 
 namespace Terramon.Core;
@@ -14,6 +16,8 @@ public partial class TerramonWorld : ModSystem
     private static bool _soundEndedLastFrame;
     private static float _lastMusicVolume;
     private static PokedexService _worldDex;
+
+    private static readonly List<(object content, Color? color)> NewTextQueue = [];
 
     /// <summary>
     ///     Plays a sound while temporarily lowering the background music volume.
@@ -56,6 +60,9 @@ public partial class TerramonWorld : ModSystem
 
     public override void PreSaveAndQuit()
     {
+        if (TooltipOverlay.IsHoldingPokemon())
+            TooltipOverlay.ClearHeldPokemon(true);
+
         Terramon.ResetUI();
     }
 
@@ -105,7 +112,22 @@ public partial class TerramonWorld : ModSystem
 
     public override void Load()
     {
+        if (Main.dedServ) return;
         On_Main.DoUpdate += MainDoUpdate_Detour;
+        On_Main.DoDraw += MainDoDraw_Detour;
+    }
+
+    public static void QueueNewText(object o, Color? color = null)
+    {
+        NewTextQueue.Add((o, color));
+    }
+
+    private static void ProcessQueuedNewText()
+    {
+        foreach (var (content, color) in NewTextQueue)
+            Main.NewText(content, color);
+
+        NewTextQueue.Clear();
     }
 
     private static void MainDoUpdate_Detour(On_Main.orig_DoUpdate orig, Main self, ref GameTime gameTime)
@@ -115,8 +137,8 @@ public partial class TerramonWorld : ModSystem
 
         orig(self, ref gameTime);
 
-        // Update all active tweens
-        Tween.DoUpdate();
+        // Process queued NewText calls
+        ProcessQueuedNewText();
 
         if (Main.musicVolume != _lastMusicVolume)
         {
@@ -139,5 +161,21 @@ public partial class TerramonWorld : ModSystem
 
         if (!activeSound.IsPlaying) return;
         _soundEndedLastFrame = true;
+    }
+
+    private static void MainDoDraw_Detour(On_Main.orig_DoDraw orig, Main self, GameTime gameTime)
+    {
+        orig(self, gameTime);
+
+        // FrameSkip subtle does very weird stuff with GameTime that causes tweens to randomly go super slow if we don't do this
+        double elapsedTime;
+
+        if (Main.FrameSkipMode == FrameSkipMode.Subtle)
+            elapsedTime = Tween.tweenStep;
+        else
+            elapsedTime = gameTime.ElapsedGameTime.TotalSeconds;
+
+        // Update all active tweens
+        Tween.DoUpdate(elapsedTime);
     }
 }

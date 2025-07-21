@@ -1,11 +1,22 @@
 {
-  NPC:
+  Common:
   {
     Transform:
     {
-      DrawOffsetY: -2
+      Width: 28
+      Height: 24
     }
-    WalkingBehaviour: {}
+  }
+  NPC:
+  {
+    WalkingBehaviour:
+    {
+      WalkSpeed: 0.85
+      FrameCount: 3
+      FrameTime: 6
+      AnimationType: Alternate
+      IsClassic: false
+    }
     SpawnController:
     {
       Stage: 1
@@ -21,10 +32,13 @@
   }
   Projectile:
   {
-    Transform:
+    GenericPet:
     {
-      DrawOffsetY: -2
+      WalkSpeedModifier: 0.85
+      FrameCount: 3
+      FrameTime: 6
+      AnimationType: Alternate
+      IsClassic: false
     }
-    GenericPet: {}
   }
 }

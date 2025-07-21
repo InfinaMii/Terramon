@@ -1,11 +1,17 @@
 using EasyPacketsLib;
 using Terramon.Content.Buffs;
+using Terramon.Content.Commands;
 using Terramon.Content.GUI;
 using Terramon.Content.Items;
 using Terramon.Content.Items.PokeBalls;
 using Terramon.Content.Packets;
+using Terramon.Content.Tiles.Banners;
+using Terramon.Content.Tiles.Interactive;
+using Terramon.Core.Loaders;
 using Terramon.Core.Loaders.UILoading;
 using Terramon.Core.Systems;
+using Terraria.Audio;
+using Terraria.DataStructures;
 using Terraria.GameInput;
 using Terraria.Localization;
 using Terraria.ModLoader.IO;
@@ -17,27 +23,55 @@ public class TerramonPlayer : ModPlayer
     private readonly PCService _pc = new();
     private readonly PokedexService _pokedex = new();
     private readonly PokedexService _shinyDex = new();
-
-    private int _activeSlot = -1;
+    
+    private int _activePCTileEntityID = -1;
+    private bool _hasPokemon;
+    private int _activeSlot;
 
     private bool _lastPlayerInventory;
     private int _premierBonusCount;
     private bool _receivedShinyCharm;
 
-    public int ActivePCTileEntityID = -1;
-
     public bool HasChosenStarter;
+    public Vector3 ColorPickerHSL;
+
+    public bool HasPokeBanner;
+
+    public int ActivePCTileEntityID
+    {
+        get => _activePCTileEntityID;
+        set
+        {
+            _activePCTileEntityID = value;
+            if (Main.myPlayer != Player.whoAmI) return; // Only the local player should handle this
+            if (value != -1)
+                PCInterface.OnOpen();
+            else
+                PCInterface.OnClose();
+        }
+    }
+
     public PokemonData[] Party { get; } = new PokemonData[6];
 
     public int ActiveSlot
     {
-        get => _activeSlot;
+        get => _hasPokemon ? _activeSlot : -1;
         set
         {
             // Toggle off dedicated pet slot
-            if (_activeSlot == -1 && !Player.miscEquips[0].IsAir)
+            if (!_hasPokemon && !Player.miscEquips[0].IsAir)
                 Player.hideMisc[0] = true;
-            _activeSlot = value;
+            
+            // Cancel Pokémon cry sound in party display UI
+            PartySidebarSlot.CrySoundSource?.Cancel();
+            
+            if (value != -1)
+            {
+                _activeSlot = value;
+                _hasPokemon = true;
+            }
+            else
+                _hasPokemon = false;
             var buffType = ModContent.BuffType<PokemonCompanion>();
             var hasBuff = Player.HasBuff(buffType);
             switch (value)
@@ -67,12 +101,40 @@ public class TerramonPlayer : ModPlayer
         return shiny ? _shinyDex : _pokedex;
     }
 
+    public PCService GetPC()
+    {
+        return _pc;
+    }
+
     public override void OnEnterWorld()
     {
         Terramon.RefreshPartyUI();
 
         // Request a full sync of the World Dex from the server when joining a host in multiplayer
         if (Main.netMode == NetmodeID.MultiplayerClient) Mod.SendPacket(new RequestWorldDexRpc());
+    }
+
+    public override void Kill(double damage, int hitDirection, bool pvp, PlayerDeathReason damageSource)
+    {
+        // Clear active PC when player dies
+        TurnOffUsedPC();
+    }
+
+    private void TurnOffUsedPC()
+    {
+        if (_activePCTileEntityID != int.MaxValue)
+        {
+            if (_activePCTileEntityID != -1 &&
+                TileEntity.ByID.TryGetValue(_activePCTileEntityID, out var entity) && entity is PCTileEntity
+                {
+                    PoweredOn: true
+                } pc)
+                pc.ToggleOnOff();
+        }
+        else
+        {
+            ActivePCTileEntityID = -1;
+        }
     }
 
     public override void OnRespawn()
@@ -86,13 +148,71 @@ public class TerramonPlayer : ModPlayer
 
     public override void ProcessTriggers(TriggersSet triggersSet)
     {
+        ProcessActiveMonTriggers();
+        
         if (HasChosenStarter && KeybindSystem.HubKeybind.JustPressed)
             HubUI.ToggleActive();
+        
+        if (!KeybindSystem.TogglePartyKeybind.JustPressed) return;
+        var inventoryParty = UILoader.GetUIState<InventoryParty>();
+        if (inventoryParty.Visible) inventoryParty.SimulateToggleSlots();
+    }
+
+    private void ProcessActiveMonTriggers()
+    {
+        bool shouldPlaySound = false;
+
+        if (KeybindSystem.TogglePokemonKeybind.JustPressed)
+        {
+            shouldPlaySound = true;
+            if (_hasPokemon)
+                ActiveSlot = -1;
+            else
+                ActiveSlot = _activeSlot;
+        }
+        else if (KeybindSystem.NextPokemonKeybind.JustPressed)
+        {
+            shouldPlaySound = true;
+            if (_hasPokemon)
+                ActiveSlot = _activeSlot == 5 ? 0 : _activeSlot + 1;
+            else
+                ActiveSlot = _activeSlot;
+        }
+        else if (KeybindSystem.PrevPokemonKeybind.JustPressed)
+        {
+            shouldPlaySound = true;
+            if (_hasPokemon)
+                ActiveSlot = _activeSlot == 0 ? 5 : _activeSlot - 1;
+            else
+                ActiveSlot = _activeSlot;
+        }
+
+        if (!shouldPlaySound) return;
+        if (_hasPokemon)
+        {
+            SoundEngine.PlaySound(new SoundStyle("Terramon/Sounds/pkmn_recall") { Volume = 0.375f });
+            SoundEngine.PlaySound(new SoundStyle("Terramon/Sounds/Cries/" + Party[_activeSlot].InternalName)
+                { Volume = 0.2525f });
+        }
+        else
+        {
+            SoundEngine.PlaySound(new SoundStyle("Terramon/Sounds/pkball_consume")
+                { Volume = 0.35f });
+        }
+    }
+
+    public override void PostUpdateBuffs()
+    {
+        if (TooltipOverlay.IsHoldingPokemon())
+            Player.controlUseItem = false;
     }
 
     public override void PreUpdate()
     {
         if (Player.whoAmI != Main.myPlayer) return;
+
+        if ((Player.chest != -1 || (!Main.playerInventory && !HubUI.Active)) && ActivePCTileEntityID != -1)
+            TurnOffUsedPC();
 
         // Handle player removing companion buff manually (right-clicking the buff icon)
         if (!Player.HasBuff<PokemonCompanion>() && ActiveSlot >= 0 && !Player.dead)
@@ -172,26 +292,74 @@ public class TerramonPlayer : ModPlayer
         TerramonWorld.UpdateWorldDex(id, status, Player.name, force);
         var hasEntry = _pokedex.Entries.TryGetValue(id, out var entry);
         var entryUpdated = false;
+
         if (hasEntry)
+        {
             if (entry.Status < status || force)
             {
                 entry.Status = status;
                 entryUpdated = true;
             }
 
+            if (status == PokedexEntryStatus.Registered)
+            {
+                entry.CaughtCount++;
+                HandleCatchMilestoneRewards(id, entry.CaughtCount);
+            }
+        }
+
         if (shiny)
         {
             var hasShinyEntry = _shinyDex.Entries.TryGetValue(id, out var shinyEntry);
             if (hasShinyEntry)
+            {
                 if (shinyEntry.Status < status || force)
                     shinyEntry.Status = status;
+
+                if (shinyEntry.Status == PokedexEntryStatus.Registered)
+                    shinyEntry.CaughtCount++;
+            }
         }
 
-        if (HubUI.Active) UILoader.GetUIState<HubUI>().RefreshPokedex(id, shiny);
+        if (HubUI.Active) UILoader.GetUIState<HubUI>().RefreshPokedex(id);
         if (!force && status == PokedexEntryStatus.Registered && entryUpdated &&
             _pokedex.RegisteredCount == Terramon.LoadedPokemonCount && !_receivedShinyCharm)
             GiveShinyCharmReward();
         return force ? hasEntry : entryUpdated;
+    }
+
+    private void HandleCatchMilestoneRewards(ushort id, int caughtCount)
+    {
+        var milestone = GetMilestoneFromCaughtCount(caughtCount);
+        if (milestone == null) return;
+
+        TerramonWorld.QueueNewText(Language.GetTextValue($"Mods.Terramon.Misc.CatchMilestone{caughtCount}",
+            Terramon.DatabaseV2.GetLocalizedPokemonName(id).Value), TerramonCommand.ChatColorYellow);
+
+        GiveBannerReward(id, milestone.Value);
+    }
+
+    private static BannerTier? GetMilestoneFromCaughtCount(int caughtCount)
+    {
+        return caughtCount switch
+        {
+            3 => BannerTier.Tier1,
+            6 => BannerTier.Tier2,
+            9 => BannerTier.Tier3,
+            12 => BannerTier.Tier4,
+            _ => null
+        };
+    }
+
+    private void GiveBannerReward(ushort id, BannerTier tier)
+    {
+        if (!PokemonEntityLoader.IDToBannerType.TryGetValue(id, out var bannerType)) return;
+
+        var bannerItem = new Item();
+        bannerItem.SetDefaults(bannerType);
+        var modItem = bannerItem.ModItem as PokeBannerItem;
+        modItem!.Tier = tier;
+        Player.QuickSpawnItem(Player.GetSource_GiftOrReward(), bannerItem);
     }
 
     private void GiveShinyCharmReward()
@@ -214,8 +382,8 @@ public class TerramonPlayer : ModPlayer
     public override void SaveData(TagCompound tag)
     {
         tag["flags"] = (byte)new BitsByte(HasChosenStarter, _receivedShinyCharm);
-        if (ActiveSlot >= 0)
-            tag["activeSlot"] = ActiveSlot;
+        if (_hasPokemon)
+            tag["activeSlot"] = _activeSlot;
         SaveParty(tag);
         SavePokedex(tag);
         SavePC(tag);
@@ -231,7 +399,10 @@ public class TerramonPlayer : ModPlayer
         }
 
         if (tag.TryGet("activeSlot", out int slot))
+        {
             _activeSlot = slot;
+            _hasPokemon = true;
+        }
         LoadParty(tag);
         LoadPokedex(tag);
         LoadPC(tag);

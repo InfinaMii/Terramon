@@ -1,6 +1,7 @@
 using EasyPacketsLib;
 using ReLogic.Content;
 using Terramon.Content.Commands;
+using Terramon.Content.GUI;
 using Terramon.Content.Packets;
 using Terramon.Helpers;
 using Terraria.Audio;
@@ -8,6 +9,7 @@ using Terraria.DataStructures;
 using Terraria.GameContent.ObjectInteractions;
 using Terraria.Localization;
 using Terraria.ObjectData;
+using Terraria.UI.Gamepad;
 
 namespace Terramon.Content.Tiles.Interactive;
 
@@ -17,12 +19,28 @@ public abstract class PCTile : ModTile
 
     static PCTile()
     {
+        if (Main.dedServ) return;
+        
         // Catch the event when the player toggles their inventory
         On_Player.ToggleInv += static (orig, self) =>
         {
-            var otherPcId = TerramonPlayer.LocalPlayer.ActivePCTileEntityID;
-            if (TerramonPlayer.LocalPlayer.ActivePCTileEntityID != -1 &&
-                TileEntity.ByID.TryGetValue(otherPcId, out var entity) && entity is PCTileEntity
+            if (Main.ingameOptionsWindow)
+            {
+                orig(self);
+                return;
+            }
+
+            var modPlayer = TerramonPlayer.LocalPlayer;
+            var pcId = modPlayer.ActivePCTileEntityID;
+            if (pcId == int.MaxValue) // Opened via /pc command
+            {
+                modPlayer.ActivePCTileEntityID = -1;
+                orig(self);
+                return;
+            }
+
+            if (pcId != -1 &&
+                TileEntity.ByID.TryGetValue(pcId, out var entity) && entity is PCTileEntity
                 {
                     PoweredOn: true
                 } pc)
@@ -49,9 +67,8 @@ public abstract class PCTile : ModTile
         TileObjectData.newTile.HookPostPlaceMyPlayer =
             new PlacementHook(ModContent.GetInstance<PCTileEntity>().Hook_AfterPlacement, -1, 0, true);
         TileObjectData.newTile.UsesCustomCanPlace = true;
+        TileObjectData.newTile.DrawYOffset = 2;
         TileObjectData.addTile(Type);
-
-        AddMapEntry(Color.White, CreateMapEntryName());
     }
 
     public override bool HasSmartInteract(int i, int j, SmartInteractScanSettings settings)
@@ -64,13 +81,14 @@ public abstract class PCTile : ModTile
         var player = Main.LocalPlayer;
         player.noThrow = 2;
         player.cursorItemIconEnabled = true;
+        TooltipOverlay.SetHoveringAnyPCTile(true);
     }
 
     public override bool RightClick(int i, int j)
     {
         if (!TileUtils.TryGetTileEntityAs(i, j, out PCTileEntity te) ||
             (te.PoweredOn && te.User != Main.myPlayer)) return false;
-        
+
         // Starter Pokémon should be chosen before using the PC
         var player = Main.LocalPlayer;
         var modPlayer = player.GetModPlayer<TerramonPlayer>();
@@ -86,9 +104,12 @@ public abstract class PCTile : ModTile
         if (otherPcId != -1 && otherPcId != te.ID && TileEntity.ByID.TryGetValue(otherPcId, out var otherTe) &&
             otherTe is PCTileEntity { PoweredOn: true } otherPcTe)
         {
-            otherPcTe.ToggleOnOff();
+            otherPcTe.ToggleOnOff(true);
             differentPc = true;
         }
+
+        // Exit any active chest UI
+        player.chest = -1;
 
         // Toggle this PC on/off
         te.ToggleOnOff();
@@ -96,9 +117,9 @@ public abstract class PCTile : ModTile
         // Play the appropriate sound for the action
         if (differentPc)
             SoundEngine.PlaySound(SoundID.MenuTick);
-        else
+        else if (te.PoweredOn)
             SoundEngine.PlaySound(
-                new SoundStyle(te.PoweredOn ? "Terramon/Sounds/ls_pc_on" : "Terramon/Sounds/ls_pc_off")
+                new SoundStyle("Terramon/Sounds/ls_pc_on")
                 {
                     Volume = 0.54f
                 });
@@ -159,7 +180,7 @@ public abstract class PCTile : ModTile
             !te.PoweredOn) return;
         var zero = new Vector2(Main.offScreenRange, Main.offScreenRange);
         if (Main.drawToScreen) zero = Vector2.Zero;
-        var drawPos = new Vector2(leftX * 16 - (int)Main.screenPosition.X + 6,
+        var drawPos = new Vector2(leftX * 16 - (int)Main.screenPosition.X + 4,
             topY * 16 - (int)Main.screenPosition.Y + 10) + zero;
         spriteBatch.Draw(_screenGlowTexture.Value, drawPos, null, Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None,
             0f);
@@ -198,12 +219,13 @@ public sealed class PCTileEntity : ModTileEntity
     public bool PoweredOn;
     public int User = -1;
 
-    public void ToggleOnOff()
+    public void ToggleOnOff(bool switching = false)
     {
         var player = Main.LocalPlayer; // This method is only ever called on the local client, so this is safe
         PoweredOn = !PoweredOn;
         User = PoweredOn ? player.whoAmI : -1;
-        player.GetModPlayer<TerramonPlayer>().ActivePCTileEntityID = PoweredOn ? ID : -1;
+        if (!switching)
+            player.GetModPlayer<TerramonPlayer>().ActivePCTileEntityID = PoweredOn ? ID : -1;
 
         if (Main.netMode == NetmodeID.SinglePlayer)
             return;
@@ -219,7 +241,7 @@ public sealed class PCTileEntity : ModTileEntity
             case NetmodeID.SinglePlayer when Main.myPlayer == User:
             {
                 // Check if the player is still nearby
-                var player = Main.player[User];
+                var player = Main.LocalPlayer;
                 var pos = player.position;
                 if (player.active && !(Vector2.Distance(Position.ToWorldCoordinates(8, 0), pos) > 94f)) return;
                 PoweredOn = false;
@@ -257,5 +279,13 @@ public sealed class PCTileEntity : ModTileEntity
         NetMessage.SendTileSquare(Main.myPlayer, i, j, 2, 3);
         NetMessage.SendData(MessageID.TileEntityPlacement, number: i, number2: j, number3: Type);
         return -1;
+    }
+
+    public override void OnKill()
+    {
+        var modPlayer = Main.LocalPlayer.GetModPlayer<TerramonPlayer>();
+        if (modPlayer.ActivePCTileEntityID != ID) return;
+        PCInterface.SilenceCloseSound = true;
+        modPlayer.ActivePCTileEntityID = -1;
     }
 }

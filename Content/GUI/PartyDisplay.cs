@@ -8,10 +8,11 @@ using Terraria.Audio;
 using Terraria.GameContent.UI.Elements;
 using Terraria.Localization;
 using Terraria.UI;
+using Terraria.UI.Gamepad;
 
 namespace Terramon.Content.GUI;
 
-public class PartyDisplay : SmartUIState
+public sealed class PartyDisplay : SmartUIState
 {
     private static readonly PartySidebarSlot[] PartySlots = new PartySidebarSlot[6];
     public static bool IsDraggingSlot { get; set; }
@@ -123,13 +124,13 @@ public sealed class PartySidebar(Vector2 size) : UIContainer(size)
         Elements.CopyTo(elementsStatic);
         foreach (var element in elementsStatic) element.Update(gameTime);
 
-        var openKey = KeybindSystem.ToggleSidebarKeybind.Current;
+        var openKey = KeybindSystem.TogglePartyKeybind.Current;
         switch (openKey)
         {
             case true when _keyUp:
             {
                 _keyUp = false;
-                if (Main.drawingPlayerChat) break;
+                if (Main.blockInput) break;
                 _toggleTween?.Kill();
                 if (_isToggled)
                 {
@@ -202,6 +203,8 @@ public class PartySidebarSlot : UIImage
         Append(_levelText);
     }
 
+    public static CancellationTokenSource CrySoundSource { get; private set; }
+
     public int Index
     {
         get => _index;
@@ -217,6 +220,12 @@ public class PartySidebarSlot : UIImage
         base.DrawSelf(spriteBatch);
         if (ContainsPoint(Main.MouseScreen)) Main.LocalPlayer.mouseInterface = true;
         if (!IsMouseHovering || Data == null || PartyDisplay.IsDraggingSlot) return;
+        if (KeybindSystem.OpenPokedexEntryKeybind.JustPressed)
+        {
+            HubUI.OpenToPokemon(Data.ID, Data.IsShiny);
+            return;
+        }
+
         var hoverText =
             Language.GetTextValue(_isActiveSlot
                 ? "Mods.Terramon.GUI.Party.SlotHoverActive"
@@ -261,11 +270,24 @@ public class PartySidebarSlot : UIImage
                 ? new SoundStyle("Terramon/Sounds/pkball_consume") { Volume = 0.35f }
                 : new SoundStyle("Terramon/Sounds/pkmn_recall") { Volume = 0.375f };
             SoundEngine.PlaySound(s);
+
+            CancellationTokenSource token = null;
             if (!_isActiveSlot)
             {
-                var cry = new SoundStyle("Terramon/Sounds/Cries/" + Data.InternalName)
-                    { Volume = 0.2525f };
-                SoundEngine.PlaySound(cry);
+                token = new CancellationTokenSource();
+                Task.Run(() =>
+                {
+                    // Wait for ~500ms before playing the sound
+                    Thread.Sleep(511);
+                    if (token.Token.IsCancellationRequested) return;
+
+                    Main.QueueMainThreadAction(() =>
+                    {
+                        var cry = new SoundStyle("Terramon/Sounds/Cries/" + Data.InternalName)
+                            { Volume = 0.15f };
+                        SoundEngine.PlaySound(cry);
+                    });
+                }, token.Token);
             }
 
             if (_isActiveSlot)
@@ -280,12 +302,15 @@ public class PartySidebarSlot : UIImage
                 if (oldSlot != -1) PartyDisplay.RecalculateSlot(oldSlot);
                 PartyDisplay.RecalculateSlot(Index);
             }
+
+            CrySoundSource = token;
         }
     }
 
     public override void RightMouseDown(UIMouseEvent evt)
     {
         base.RightMouseDown(evt);
+        if (UILinkPointNavigator.InUse) return;
         DragStart(evt);
     }
 
@@ -471,9 +496,7 @@ public class PartySidebarSlot : UIImage
                 AssetRequestMode.ImmediateLoad));
             _spriteBox.Top.Set(10, 0f);
             _spriteBox.Left.Set(59, 0f);
-            var sprite = new UIImage(ModContent.Request<Texture2D>(
-                $"Terramon/Assets/Pokemon/{data.InternalName}{(!string.IsNullOrEmpty(data.Variant) ? "_" + data.Variant : string.Empty)}_Mini{(data.IsShiny ? "_S" : string.Empty)}",
-                AssetRequestMode.ImmediateLoad))
+            var sprite = new UIImage(data.GetMiniSprite())
             {
                 ImageScale = 0.7f
             };

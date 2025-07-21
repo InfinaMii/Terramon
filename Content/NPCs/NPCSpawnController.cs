@@ -1,6 +1,8 @@
+using System.Reflection;
 using Terramon.Content.Configs;
 using Terramon.Core.NPCComponents;
 using Terramon.ID;
+using Terraria.ModLoader.Core;
 using Terraria.ModLoader.Utilities;
 
 // ReSharper disable UnassignedField.Global
@@ -97,9 +99,15 @@ public class NPCSpawnController : NPCComponent
     // Continue to support legacy system for setting spawn conditions
     public float Chance;
     public string Condition;
-    
+
     // Simple spawning system fields
     public SpawningStage Stage;
+
+    static NPCSpawnController()
+    {
+        MonoModHooks.Add(typeof(NPCLoader).GetMethod("FinishSetup", BindingFlags.Static | BindingFlags.NonPublic),
+            HookFinishSetup);
+    }
 
     /// <summary>
     ///     All possible conditions for the NPC to spawn and their respective chances. If any of these conditions are met, the
@@ -110,9 +118,50 @@ public class NPCSpawnController : NPCComponent
 
     protected override bool CacheInstances => true;
 
+    private static void HookFinishSetup(Action orig)
+    {
+        orig();
+
+        var hookList = (GlobalHookList<GlobalNPC>)typeof(NPCLoader).GetField("HookEditSpawnPool",
+            BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
+        var hookGlobals = (GlobalNPC[])typeof(GlobalHookList<GlobalNPC>).GetField("hookGlobals",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(hookList)!;
+
+        // Finds this type (NPCSpawnController) in the array and move it to the end to ensure it runs last
+        for (var i = 0; i < hookGlobals.Length; i++)
+        {
+            if (hookGlobals[i].GetType() != typeof(NPCSpawnController)) continue;
+            MoveToEnd(hookGlobals, i);
+            break;
+        }
+
+        return;
+
+        void MoveToEnd<T>(IList<T> array, int index)
+        {
+            if (index < 0 || index >= array.Count) return;
+
+            var temp = array[index];
+            for (var i = index; i < array.Count - 1; i++) array[i] = array[i + 1];
+            array[^1] = temp;
+        }
+    }
+
+    /*public override void EditSpawnRate(Player player, ref int spawnRate, ref int maxSpawns)
+    {
+        Main.NewText($"spawnRate: {spawnRate}, maxSpawns: {maxSpawns}");
+    }*/
+
     public override void EditSpawnPool(IDictionary<int, float> pool, NPCSpawnInfo spawnInfo)
     {
         var gameplayConfig = ModContent.GetInstance<GameplayConfig>();
+
+        var regularSpawnRateMultiplier = gameplayConfig.NonPokemonSpawnRateMultiplier;
+        if (regularSpawnRateMultiplier != 1f)
+            // Iterate through all the NPCs in the pool and apply the spawn rate multiplier directly
+            foreach (var key in pool.Keys.ToList())
+                pool[key] *= regularSpawnRateMultiplier;
+
         var spawnRateMultiplier = gameplayConfig.PokemonSpawnRateMultiplier;
         if (spawnRateMultiplier == 0) return;
 
@@ -158,13 +207,13 @@ public class NPCSpawnController : NPCComponent
         // Normalize the spawn pool
         var totalTypesAdded = typesAdded.Count;
         foreach (var type in typesAdded)
-            pool[type] = (pool[type] / totalTypesAdded) * spawnRateMultiplier;
+            pool[type] = pool[type] / totalTypesAdded * spawnRateMultiplier;
     }
 
     private static bool SimpleEditSpawnPool(IDictionary<int, float> pool, int type, NPCSpawnController spawnController,
         NPCSpawnInfo spawnInfo, bool hasWaterCandle, bool hasBattlePotion)
     {
-        const float chanceMultiplier = 0.125f;
+        const float chanceMultiplier = 7f / 32f; // 0.21875f
         var spawnChance = 0f;
         var schema = ((PokemonNPC)spawnController.NPC.ModNPC).Schema;
         var primaryType = schema.Types[0];
@@ -175,7 +224,8 @@ public class NPCSpawnController : NPCComponent
         if (dualType)
         {
             var secondaryType = schema.Types[1];
-            if (SimpleSpawnConditions.TryGetValue(secondaryType, out var secondaryCondition) &&
+            if (secondaryType != PokemonType.Flying &&
+                SimpleSpawnConditions.TryGetValue(secondaryType, out var secondaryCondition) &&
                 secondaryCondition(spawnInfo))
                 spawnChance += 0.5f;
         }

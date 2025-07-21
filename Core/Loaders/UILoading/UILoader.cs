@@ -1,3 +1,4 @@
+using System.Reflection;
 using Terramon.Helpers;
 using Terraria.UI;
 
@@ -18,8 +19,13 @@ internal class UILoader : ModSystem
     /// </summary>
     private static List<SmartUIState> _uiStates = [];
 
-    public static GameTime GameTime { get; set; }
     private static Vector2 _mousePosition;
+
+    private static readonly FieldInfo ClickDisabledTimeRemainingField = typeof(UserInterface).GetField(
+        "_clickDisabledTimeRemaining",
+        BindingFlags.NonPublic | BindingFlags.Instance);
+
+    public static GameTime GameTime { get; set; }
 
     public static void UpdateApplication(IEnumerable<Type> changedTypes)
     {
@@ -28,10 +34,20 @@ internal class UILoader : ModSystem
 
     public override void Load()
     {
+        if (Main.dedServ)
+            return;
+        
         On_Main.DoUpdateInWorld += static (orig, self, sw) =>
         {
             orig(self, sw);
             UpdateUI_Custom(GameTime);
+        };
+        
+        On_Main.DoUpdate_WhilePaused += static (orig) =>
+        {
+            orig();
+            if (!Main.autoPause) return;
+            UpdateUI_Custom(GameTime); // Update UIs when auto-pause is enabled
         };
     }
 
@@ -162,8 +178,9 @@ internal class UILoader : ModSystem
             if (!smartUiState.Visible && smartUiState.LastVisible)
                 eachState.ResetLasts();
             smartUiState.LastVisible = smartUiState.Visible;
-            if (smartUiState.Visible)
-                eachState.Update(gameTime);
+            if (!smartUiState.Visible) continue;
+            ClickDisabledTimeRemainingField?.SetValue(eachState, 0);
+            eachState.Update(gameTime);
         }
 
         Main.mouseX = (int)currentMousePosition.X;

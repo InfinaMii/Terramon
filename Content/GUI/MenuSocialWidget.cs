@@ -6,18 +6,18 @@ using Terraria.GameContent;
 
 namespace Terramon.Content.GUI;
 
-internal sealed class MenuSocialWidget
+internal static class MenuSocialWidget
 {
     private const string DiscordURL = "https://discord.gg/qDn5eW27c4"; // Terramon Mod, #rules-and-info
     private const string DiscordInviteCode = "qDn5eW27c4";
     private const string WikiURL = "https://terrariamods.wiki.gg/wiki/Terramon_Mod";
     private const string YouTubeURL = "https://www.youtube.com/@TerramonMod";
     private const string GitHubURL = "https://github.com/JamzOJamz/Terramon";
+    private const double DiscordClientCheckInterval = 2.5;
 
     private static readonly Item FakeItem = new();
-    private static readonly bool[] LastHoveringInteractableText = new bool[5];
+    private static readonly bool[] LastHoveringInteractableText = new bool[6];
     private static DateTime _lastDiscordClientCheck = DateTime.MinValue;
-    private const double DiscordClientCheckInterval = 5;
     private static bool _isDiscordClientRunning;
 
     public static void Setup()
@@ -32,7 +32,7 @@ internal sealed class MenuSocialWidget
         // Wait until the mod is loaded by TML
         var mod = Terramon.Instance;
         if (mod == null) return;
-        
+
         // Check if Discord client is open on the player's system every X seconds
         if (DateTime.UtcNow - _lastDiscordClientCheck > TimeSpan.FromSeconds(DiscordClientCheckInterval))
         {
@@ -48,7 +48,7 @@ internal sealed class MenuSocialWidget
         DrawOutlinedStringOnMenu(Main.spriteBatch, FontAssets.MouseText.Value,
             $"{mod.DisplayNameClean} v{mod.Version}", drawPos, Color.White, 0f, Vector2.Zero,
             1.07f, SpriteEffects.None, 0f, alphaMult: 0.76f);
-        
+
         // Draw Mod Config link text
         const string configText = "Mod Config";
         var configTextSize = FontAssets.MouseText.Value.MeasureString(configText);
@@ -65,14 +65,16 @@ internal sealed class MenuSocialWidget
             {
                 SoundEngine.PlaySound(SoundID.MenuOpen);
                 Main.mouseLeftRelease = false;
-                
+
                 var interfaceType = typeof(ModLoader).Assembly.GetType("Terraria.ModLoader.UI.Interface");
                 var modConfigList = interfaceType!
                     .GetField("modConfigList", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null);
                 var modToSelectOnOpen = modConfigList!
                     .GetType().GetField("ModToSelectOnOpen", BindingFlags.Instance | BindingFlags.Public);
                 modToSelectOnOpen!.SetValue(modConfigList, Terramon.Instance);
-                Main.menuMode = (int)interfaceType.GetField("modConfigListID", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
+                Main.menuMode =
+                    (int)interfaceType.GetField("modConfigListID", BindingFlags.Static | BindingFlags.NonPublic)!
+                        .GetValue(null)!;
             }
 
             LastHoveringInteractableText[4] = true;
@@ -81,7 +83,7 @@ internal sealed class MenuSocialWidget
         {
             LastHoveringInteractableText[4] = false;
         }
-        
+
         DrawOutlinedStringOnMenu(Main.spriteBatch, FontAssets.MouseText.Value, configText, drawPos,
             hoveredConfig ? new Color(237, 246, 255) : new Color(173, 173, 198), 0f, Vector2.Zero, 1.02f,
             SpriteEffects.None, 0f, alphaMult: 0.76f);
@@ -91,8 +93,8 @@ internal sealed class MenuSocialWidget
         var discordTextSize = FontAssets.MouseText.Value.MeasureString(discordText);
         discordTextSize.Y *= 0.9f;
         drawPos.Y += 30;
-        var hovered = Main.MouseScreen.Between(drawPos, drawPos + discordTextSize);
-        if (hovered)
+        var hoveredDiscord = Main.MouseScreen.Between(drawPos, drawPos + discordTextSize);
+        if (hoveredDiscord)
         {
             Main.LocalPlayer.mouseInterface = true;
             if (!LastHoveringInteractableText[0])
@@ -114,15 +116,11 @@ internal sealed class MenuSocialWidget
             {
                 SoundEngine.PlaySound(SoundID.MenuOpen);
                 Main.mouseLeftRelease = false;
-                
+
                 if (_isDiscordClientRunning)
-                {
                     Task.Run(() => DiscordInviteBeamer.Send(DiscordInviteCode));
-                }
                 else
-                {
                     Utils.OpenToURL(DiscordURL);
-                }
             }
 
             LastHoveringInteractableText[0] = true;
@@ -133,7 +131,7 @@ internal sealed class MenuSocialWidget
         }
 
         DrawOutlinedStringOnMenu(Main.spriteBatch, FontAssets.MouseText.Value, discordText, drawPos,
-            hovered ? new Color(237, 246, 255) : new Color(173, 173, 198), 0f, Vector2.Zero, 1.02f, SpriteEffects.None,
+            hoveredDiscord ? new Color(237, 246, 255) : new Color(173, 173, 198), 0f, Vector2.Zero, 1.02f, SpriteEffects.None,
             0f, alphaMult: 0.76f);
 
         // Draw Terramon Wiki link text
@@ -274,5 +272,15 @@ internal sealed class MenuSocialWidget
             spriteBatch.DrawString(font, text, position + new Vector2(offX, offY), color, rotation, origin, scale,
                 effects, layerDepth);
         }
+    }
+
+    private static Color BrightenColor(Color color, float brightenFactor)
+    {
+        return new Color(
+            (byte)(color.R + (255 - color.R) * brightenFactor),
+            (byte)(color.G + (255 - color.G) * brightenFactor),
+            (byte)(color.B + (255 - color.B) * brightenFactor),
+            color.A
+        );
     }
 }

@@ -39,6 +39,12 @@ public class UIHoverImageButton : TransformableUIButton
         _isActivated = active;
     }
 
+    public override void Update(GameTime gameTime)
+    {
+        if (!_isActivated) return;
+        base.Update(gameTime);
+    }
+
     protected override void DrawSelf(SpriteBatch spriteBatch)
     {
         if (!_isActivated) return;

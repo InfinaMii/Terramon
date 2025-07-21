@@ -9,6 +9,7 @@ public class PCRed : PCTile
         base.SetStaticDefaults();
         DustType = DustID.Crimstone;
         RegisterItemDrop(ModContent.ItemType<PCItemRed>());
+        AddMapEntry(ModContent.GetInstance<CherishBallRarity>().RarityColor, CreateMapEntryName());
     }
 
     public override void MouseOver(int i, int j)
@@ -26,5 +27,16 @@ public class PCItemRed : PCItem
     {
         Item.DefaultToPlaceableTile(ModContent.TileType<PCRed>());
         base.SetDefaults();
+    }
+
+    public override void AddRecipes()
+    {
+        CreateRecipe()
+            .AddIngredient(ItemID.Chest, 2)
+            .AddRecipeGroup(RecipeGroupID.IronBar, 8)
+            .AddIngredient(ItemID.Glass, 10)
+            .AddIngredient<PokeBallItem>()
+            .AddTile(TileID.WorkBenches)
+            .Register();
     }
 }
