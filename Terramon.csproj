@@ -7,6 +7,9 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Reference Include="DiscordRPC">
+          <HintPath>lib\DiscordRPC.dll</HintPath>
+        </Reference>
         <Reference Include="EasyPacketsLib">
             <HintPath>lib\EasyPacketsLib.dll</HintPath>
         </Reference>
