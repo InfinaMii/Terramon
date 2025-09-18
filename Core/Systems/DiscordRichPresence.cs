@@ -218,8 +218,16 @@ public class DiscordRichPresence : ModSystem
                 LargeImageKey = _largeImageId.ToString().ToLower(),
                 SmallImageKey = _smallImage
             },
-            Timestamps = timestamps
+            Timestamps = timestamps,
+            Buttons = [
+                new Button()
+                {
+                    Label = "Download Terramon!",
+                    Url = "https://steamcommunity.com/sharedfiles/filedetails/?id=3435381419"
+                }]
         });
+        if (_client.CurrentUser != null) 
+            Main.NewText(_client.CurrentUser.Username);
     }
     
     
