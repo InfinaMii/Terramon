@@ -1,5 +1,6 @@
 using Terramon.Core.Systems;
 using Terramon.ID;
+using Terraria.DataStructures;
 using Terraria.Localization;
 
 namespace Terramon.Core;
@@ -12,29 +13,46 @@ public class QuestProgress
 
     public void Complete()
     {
-        if (completed) return; //TODO: rewards
+        if (completed) return;
         
         completed = true;
-        Main.NewText("You have completed the quest " + Language.GetText("Mods.Terramon.Quests." + Uid));
+        Main.NewText("You have completed the quest " + Language.GetText("Mods.Terramon.Quests." + Uid), Color.Yellow);
     }
 }
 
 public class QuestService()
 {
-    
-    private List<string> _completedQuestIDs = new();
-    private List<QuestProgress> _activeQuests = new();
+    private readonly List<string> _completedQuestIDs = new();
+    public readonly List<QuestProgress> ActiveQuests = new();
 
-    private List<QuestProgress> ActiveQuests
+    public bool ClaimRewardsForQuest(int index)
     {
-        get => _activeQuests;
-        set => _activeQuests = value;
+        if (!ActiveQuests[index].completed) return false;
+        var quest = QuestSystem.Quests.Find(q => q.Uid == ActiveQuests[index].Uid);
+        Main.LocalPlayer.QuickSpawnItem(Main.LocalPlayer.GetSource_GiftOrReward(), 
+            quest.Reward.ItemId, quest.Reward.ItemCount);
+        _completedQuestIDs.Add(quest.Uid);
+        ActiveQuests.RemoveAt(index);
+        CheckForNewQuests();
+        return true;
     }
-    
-    public void GetDefaultValues() //TODO: replace with availability check
+
+    public void CheckForNewQuests()
     {
+        bool questsEmpty = ActiveQuests.Count == 0;
+        int count = 0;
         foreach (var quest in QuestSystem.Quests)
-            _activeQuests.Add(new QuestProgress {Uid = quest.Uid, Progress = 0});
+        {
+            if (_completedQuestIDs.Contains(quest.Uid)) continue;
+            if (ActiveQuests.FindIndex(q => q.Uid == quest.Uid) != -1) continue;
+            if (quest.Dependencies != null && quest.Dependencies.Any(x => !_completedQuestIDs.Contains(x))) continue;
+
+            count++;
+            ActiveQuests.Add(new QuestProgress {Uid = quest.Uid, Progress = 0});
+        }
+        
+        if (count > 0 && (!questsEmpty || _completedQuestIDs.Count > 0))
+            Main.NewText($"{count} new quest{(count > 1 ? "s are" : " is")} available!", Color.Yellow); //TODO: move into localisation
     }
 
     public void TriggerPokemonCaught(ushort pokemonID, List<PokemonType> pokemonType, BallID pokeballID)

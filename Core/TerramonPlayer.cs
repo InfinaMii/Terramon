@@ -115,7 +115,7 @@ public class TerramonPlayer : ModPlayer
     public override void OnEnterWorld()
     {
         Terramon.RefreshPartyUI();
-        _quests.GetDefaultValues();
+        _quests.CheckForNewQuests();
         _quests.TriggerInventoryUpdate(Player, null);
 
         // Request a full sync of the World Dex from the server when joining a host in multiplayer

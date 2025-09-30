@@ -6,13 +6,13 @@ using Terraria.Localization;
 
 namespace Terramon.Core.Systems;
 
-public class TerramonQuest(string uid, ushort count, QuestTrigger trigger, QuestPredicate predicate, QuestReward reward, string[] dependencies = null)
+public class TerramonQuest(string uid, ushort count, QuestTrigger trigger, QuestPredicate predicate, QuestReward reward, params string[] dependencies)
 {
     public string Uid = uid;
     public ushort Count = count;
     public QuestTrigger Trigger = trigger;
     public QuestPredicate Predicate = predicate;
-    public QuestReward Reward = reward;
+    public QuestReward Reward = reward; //TODO: consume/don't consume items
     public string[] Dependencies = dependencies;
 }
 
@@ -72,7 +72,8 @@ public class QuestSystem: ModSystem
             new(){ ItemId = ModContent.ItemType<RareCandy>(), PokemonID = 13 }, new(ModContent.ItemType<CherishBallItem>())));
         
         AddQuest(nameof(Terramon), new TerramonQuest("Test.UseCandyOnWaterPokemon", 1, QuestTrigger.ItemUsed, 
-            new(){ ItemId = ModContent.ItemType<RareCandy>(), PokemonType = PokemonType.Water }, new(ModContent.ItemType<CherishBallItem>())));
+            new(){ ItemId = ModContent.ItemType<RareCandy>(), PokemonType = PokemonType.Water }, new(ModContent.ItemType<CherishBallItem>()), 
+            "Test.Get5Dirt"));
     }
 
     public void AddQuest(string mod, TerramonQuest quest)
