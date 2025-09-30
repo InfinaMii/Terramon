@@ -746,3 +746,18 @@ Misc: {
 		[c/C9C9E5:Make sure to customize the mod to your liking in the Mod Config menu and set up keybindings in the Controls menu.]
 		''' */
 }
+
+Quests: {
+	Test: {
+		// Get5Dirt: Get 5 Dirt
+		// CatchPikachu: Catch Pikachu
+		// Catch5WithGreatBall: Catch 5 With Great Ball
+		// Catch5WaterType: Catch 5 Water Type
+		// CatchFireWithUltraBall: Catch Fire With Ultra Ball
+		// Use5RareCandies: Use 5 Rare Candies
+		// ThrowPokeBall: Throw Poke Ball
+		// UseCandyOnWeedle: Use Candy On Weedle
+		// UseCandyOnBugPokemon: Use Candy On Bug Pokemon
+		// UseCandyOnWaterPokemon: Use Candy On Water Pokemon
+	}
+}

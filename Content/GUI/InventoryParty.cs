@@ -366,6 +366,8 @@ internal sealed class CustomPartyItemSlot : UIImage
         }
 
         var consume = item.PokemonDirectUse(Main.LocalPlayer, Data, rightClick ? Main.mouseItem.stack : 1);
+        if (consume > 0)
+            TerramonPlayer.LocalPlayer.GetQuests().TriggerItemUse(Main.mouseItem, Data.ID, Terramon.DatabaseV2.GetPokemon(Data.ID).Types);
         Main.mouseItem.stack -= consume;
         if (Main.mouseItem.stack <= 0) Main.mouseItem.TurnToAir();
     }

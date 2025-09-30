@@ -63,6 +63,13 @@ public abstract class BasePkballItem : TerramonItem
         return true;
     }
 
+    public override bool? UseItem(Player player)
+    {
+        if (Main.LocalPlayer == player && Item.shoot != ProjectileID.None)
+            player.GetModPlayer<TerramonPlayer>().GetQuests().TriggerItemUse(Item, 0, null);
+        return base.UseItem(player);
+    }
+
     public override bool AltFunctionUse(Player player)
     {
         return true;

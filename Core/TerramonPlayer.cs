@@ -23,6 +23,7 @@ public class TerramonPlayer : ModPlayer
     private readonly PCService _pc = new();
     private readonly PokedexService _pokedex = new();
     private readonly PokedexService _shinyDex = new();
+    private readonly QuestService _quests = new();
     
     private int _activePCTileEntityID = -1;
     private bool _hasPokemon;
@@ -105,10 +106,17 @@ public class TerramonPlayer : ModPlayer
     {
         return _pc;
     }
+    
+    public QuestService GetQuests()
+    {
+        return _quests;
+    }
 
     public override void OnEnterWorld()
     {
         Terramon.RefreshPartyUI();
+        _quests.GetDefaultValues();
+        _quests.TriggerInventoryUpdate(Player, null);
 
         // Request a full sync of the World Dex from the server when joining a host in multiplayer
         if (Main.netMode == NetmodeID.MultiplayerClient) Mod.SendPacket(new RequestWorldDexRpc());
@@ -144,6 +152,12 @@ public class TerramonPlayer : ModPlayer
         // Reapply companion buff on player respawn
         if (ActiveSlot >= 0 && !Player.HasBuff(ModContent.BuffType<PokemonCompanion>()))
             Player.AddBuff(ModContent.BuffType<PokemonCompanion>(), 2);
+    }
+
+    public override bool OnPickup(Item item)
+    {
+        _quests.TriggerInventoryUpdate(Player, item);
+        return true;
     }
 
     public override void ProcessTriggers(TriggersSet triggersSet)

@@ -38,7 +38,10 @@ public class PokemonDirectUseGlobalItem : GlobalItem
     {
         var modPlayer = player.GetModPlayer<TerramonPlayer>();
         var directUseItem = (IPokemonDirectUse)item.ModItem;
-        directUseItem.PokemonDirectUse(player, modPlayer.GetActivePokemon());
+        var useOnPokemon = modPlayer.GetActivePokemon();
+        var amount = directUseItem.PokemonDirectUse(player, modPlayer.GetActivePokemon());
+        if (amount > 0)
+            TerramonPlayer.LocalPlayer.GetQuests().TriggerItemUse(item, useOnPokemon.ID, Terramon.DatabaseV2.GetPokemon(useOnPokemon.ID).Types);
         return true;
     }
 }

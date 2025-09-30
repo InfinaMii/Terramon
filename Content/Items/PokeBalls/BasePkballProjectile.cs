@@ -420,6 +420,7 @@ internal abstract class BasePkballProjectile : ModProjectile
                     _capture.DisplayName,
                     player.Player.name));
         }
+        player.GetQuests().TriggerPokemonCaught(_capture.Data.ID, Terramon.DatabaseV2.GetPokemon(_capture.Data.ID).Types, _capture.Data.Ball);
 
         if (!justRegistered ||
             !ModContent.GetInstance<ClientConfig>().ShowPokedexRegistrationMessages) return;
