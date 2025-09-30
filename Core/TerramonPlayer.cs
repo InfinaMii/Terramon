@@ -407,6 +407,7 @@ public class TerramonPlayer : ModPlayer
         SaveParty(tag);
         SavePokedex(tag);
         SavePC(tag);
+        _quests.SaveData(tag);
     }
 
     public override void LoadData(TagCompound tag)
@@ -426,6 +427,7 @@ public class TerramonPlayer : ModPlayer
         LoadParty(tag);
         LoadPokedex(tag);
         LoadPC(tag);
+        _quests.LoadData(tag);
     }
 
     private void SaveParty(TagCompound tag)

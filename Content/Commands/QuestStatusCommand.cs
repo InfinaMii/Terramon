@@ -20,6 +20,6 @@ public class QuestStatusCommand : DebugCommand
 
         var quests = TerramonPlayer.LocalPlayer.GetQuests().ActiveQuests;
         for (int i = 0; i < quests.Count; i++)
-            Main.NewText($"{i}: {Language.GetText("Mods.Terramon.Quests." + quests[i].Uid)}", quests[i].completed ? Color.Yellow : Color.White);
+            Main.NewText($"{i}: {Language.GetText("Mods.Terramon.Quests." + quests[i].Uid)}", quests[i].Completed ? Color.Yellow : Color.White);
     }
 }

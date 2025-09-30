@@ -2,6 +2,7 @@ using Terramon.Core.Systems;
 using Terramon.ID;
 using Terraria.DataStructures;
 using Terraria.Localization;
+using Terraria.ModLoader.IO;
 
 namespace Terramon.Core;
 
@@ -9,25 +10,25 @@ public class QuestProgress
 {
     public string Uid;
     public ushort Progress;
-    public bool completed;
+    public bool Completed;
 
     public void Complete()
     {
-        if (completed) return;
+        if (Completed) return;
         
-        completed = true;
+        Completed = true;
         Main.NewText("You have completed the quest " + Language.GetText("Mods.Terramon.Quests." + Uid), Color.Yellow);
     }
 }
 
 public class QuestService()
 {
-    private readonly List<string> _completedQuestIDs = new();
-    public readonly List<QuestProgress> ActiveQuests = new();
+    private readonly List<string> _completedQuestIDs = [];
+    public readonly List<QuestProgress> ActiveQuests = [];
 
     public bool ClaimRewardsForQuest(int index)
     {
-        if (!ActiveQuests[index].completed) return false;
+        if (!ActiveQuests[index].Completed) return false;
         var quest = QuestSystem.Quests.Find(q => q.Uid == ActiveQuests[index].Uid);
         Main.LocalPlayer.QuickSpawnItem(Main.LocalPlayer.GetSource_GiftOrReward(), 
             quest.Reward.ItemId, quest.Reward.ItemCount);
@@ -60,7 +61,7 @@ public class QuestService()
         Main.NewText("a");
         foreach (var active in ActiveQuests)
         {
-            if (active.completed) continue;
+            if (active.Completed) continue;
             var quest = QuestSystem.Quests.Find(q => q.Uid == active.Uid);
             
             if (quest.Trigger != QuestTrigger.PokemonCaught) continue;
@@ -79,6 +80,7 @@ public class QuestService()
         foreach (var active in ActiveQuests)
         {
             var quest = QuestSystem.Quests.Find(q => q.Uid == active.Uid);
+            var response = QuestSystem.Quests.Count + ", " + active.Uid;
             if (quest.Trigger != QuestTrigger.InventoryUpdated) continue;
             if (item != null && quest.Predicate.ItemId != item.type) continue; //allow null items if every slot is to be checked
 
@@ -93,7 +95,7 @@ public class QuestService()
             if (amount >= quest.Count)
                 active.Complete();
             else
-                active.completed = false;
+                active.Completed = false;
         }
     }
     
@@ -101,7 +103,7 @@ public class QuestService()
     {
         foreach (var active in ActiveQuests)
         {
-            if (active.completed) continue;
+            if (active.Completed) continue;
             var quest = QuestSystem.Quests.Find(q => q.Uid == active.Uid);
             
             if (quest.Trigger != QuestTrigger.ItemUsed) continue;
@@ -113,5 +115,64 @@ public class QuestService()
             if (active.Progress >= quest.Count)
                 active.Complete();
         }
+    }
+
+    public void LoadData(TagCompound tag)
+    {
+        LoadActive(tag);
+        LoadCompleted(tag);
+    }
+
+    private void LoadActive(TagCompound tag)
+    {
+        const string tagName = "questAct";
+        if (!tag.ContainsKey(tagName)) return;
+
+        ActiveQuests.Clear();
+        
+        var activeQuests = tag.GetList<TagCompound>(tagName);
+        foreach (var quest in activeQuests)
+        {
+            var item = new QuestProgress();
+            item.Uid = quest.GetString("uid");
+            item.Progress = (ushort)quest.GetShort("prog");
+            item.Completed = quest.GetBool("completed");
+            ActiveQuests.Add(item);
+        }
+    }
+    
+    private void LoadCompleted(TagCompound tag)
+    {
+        const string tagName = "questComp";
+        if (!tag.ContainsKey(tagName)) return;
+
+        _completedQuestIDs.Clear();
+        _completedQuestIDs.AddRange(tag.GetList<string>(tagName));
+        Main.NewText("a");
+    }
+    
+    public void SaveData(TagCompound tag)
+    {
+        SaveActive(tag);
+        SaveCompleted(tag);
+    }
+
+    private void SaveActive(TagCompound tag)
+    {
+        var master = new List<TagCompound>();
+        foreach (var quest in ActiveQuests)
+        {
+            var item = new TagCompound();
+            item["uid"] = quest.Uid;
+            item["prog"] = (short)quest.Progress;
+            item["completed"] = quest.Completed;
+            master.Add(item);
+        }
+        tag["questAct"] = master;
+    }
+
+    private void SaveCompleted(TagCompound tag)
+    {
+       tag["questComp"] = _completedQuestIDs;
     }
 }
