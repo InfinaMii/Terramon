@@ -730,6 +730,9 @@ Misc: {
 	// CatchMilestone9: You've obtained your 9th {0}!
 	// CatchMilestone12: You've obtained your 12th {0}!
 	PokedexRegistered: “{0} 的数据已被添加到宝可梦图鉴中。”
+	// QuestAvailable: A new quest is available!
+	// QuestAvailableMulti: "{0} new quests are available!"
+	// QuestCompleted: Quest Completed: "{0}"
 	PCBoxDefaultName: 盒子 {0}
 	RequireStarter: 请先选择初始宝可梦！
 	NoActivePokemon: 你需要有一只活跃的宝可梦才能这样做！

@@ -726,6 +726,9 @@ Misc: {
 	// CatchMilestone9: You've obtained your 9th {0}!
 	// CatchMilestone12: You've obtained your 12th {0}!
 	PokedexRegistered: Los datos de {0} fueron añadidos a la Pokédex.
+	// QuestAvailable: A new quest is available!
+	// QuestAvailableMulti: "{0} new quests are available!"
+	// QuestCompleted: Quest Completed: "{0}"
 	PCBoxDefaultName: Caja {0}
 	RequireStarter: ¡Escoge primero un Pokémon inicial!
 	NoActivePokemon: ¡Necesitas tener un Pokémon activo para hacer eso!

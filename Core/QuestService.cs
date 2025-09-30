@@ -17,7 +17,7 @@ public class QuestProgress
         if (Completed) return;
         
         Completed = true;
-        Main.NewText("You have completed the quest " + Language.GetText("Mods.Terramon.Quests." + Uid), Color.Yellow);
+        Main.NewText(Language.GetTextValue("Mods.Terramon.Misc.QuestCompleted", Language.GetText("Mods.Terramon.Quests." + Uid)), Color.Yellow);
     }
 }
 
@@ -53,12 +53,11 @@ public class QuestService()
         }
         
         if (count > 0 && (!questsEmpty || _completedQuestIDs.Count > 0))
-            Main.NewText($"{count} new quest{(count > 1 ? "s are" : " is")} available!", Color.Yellow); //TODO: move into localisation
+            Main.NewText(Language.GetTextValue(count > 1 ? "Mods.Terramon.Misc.QuestAvailableMulti" : "Mods.Terramon.Misc.QuestAvailable", count), Color.Yellow);
     }
 
     public void TriggerPokemonCaught(ushort pokemonID, List<PokemonType> pokemonType, BallID pokeballID)
     {
-        Main.NewText("a");
         foreach (var active in ActiveQuests)
         {
             if (active.Completed) continue;
@@ -148,7 +147,6 @@ public class QuestService()
 
         _completedQuestIDs.Clear();
         _completedQuestIDs.AddRange(tag.GetList<string>(tagName));
-        Main.NewText("a");
     }
     
     public void SaveData(TagCompound tag)
