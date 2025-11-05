@@ -723,6 +723,7 @@ Keybinds: {
 	TogglePokemon.DisplayName: Toggle Active Pokémon
 	NextPokemon.DisplayName: Summon Next Pokémon
 	PrevPokemon.DisplayName: Summon Previous Pokémon
+	PetPokemon.DisplayName: Pet Pokemon
 }
 
 Tiles: {

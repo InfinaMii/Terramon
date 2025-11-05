@@ -8,6 +8,7 @@ public class KeybindSystem : ModSystem
     public static ModKeybind TogglePokemonKeybind { get; private set; }
     public static ModKeybind NextPokemonKeybind { get; private set; }
     public static ModKeybind PrevPokemonKeybind { get; private set; }
+    public static ModKeybind PetPokemonKeybind { get; private set; }
 
     public override void Load()
     {
@@ -17,6 +18,7 @@ public class KeybindSystem : ModSystem
         TogglePokemonKeybind = KeybindLoader.RegisterKeybind(Mod, "TogglePokemon", "OemQuotes");
         NextPokemonKeybind = KeybindLoader.RegisterKeybind(Mod, "NextPokemon", "OemCloseBrackets");
         PrevPokemonKeybind = KeybindLoader.RegisterKeybind(Mod, "PrevPokemon", "OemOpenBrackets");
+        PetPokemonKeybind = KeybindLoader.RegisterKeybind(Mod, "PetPokemon", "L");
     }
 
     public override void Unload()
@@ -27,5 +29,7 @@ public class KeybindSystem : ModSystem
         TogglePokemonKeybind = null;
         NextPokemonKeybind = null;
         PrevPokemonKeybind = null;
+        
+        PetPokemonKeybind = null;
     }
 }

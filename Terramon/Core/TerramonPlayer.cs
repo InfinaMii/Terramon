@@ -46,6 +46,9 @@ public class TerramonPlayer : ModPlayer
     public ExpShareSettings NonParticipantSettings = new(0.5f);
     public bool ExpShareOn;
     public BattleInstance Battle;
+    
+    private float _petHeadHeight = 0;
+    private bool _petting = false;
 
     public int ActivePCTileEntityID
     {
@@ -212,6 +215,13 @@ public class TerramonPlayer : ModPlayer
             else
                 ActiveSlot = _lastActiveSlot;
         }
+        else if (KeybindSystem.PetPokemonKeybind.JustPressed)
+        {
+            if (!_petting)
+                PetPet();
+            else
+                UnpetPet();
+        }
 
         if (!shouldPlaySound) return;
         if (_activeSlot != -1)
@@ -272,6 +282,56 @@ public class TerramonPlayer : ModPlayer
     public override void PostUpdate()
     {
         Battle?.Update();
+        
+        if (_activePetProjectile == null || Player.controlLeft || Player.controlRight || Player.controlUp || Player.controlDown || Player.controlJump || Player.pulley || Player.mount.Active)
+            UnpetPet();
+
+        if (_petting)
+        {
+            if (_activePetProjectile!.Projectile.position.DistanceSQ(Player.position) > 1024)
+                return;
+            
+            //vanilla arm stretch code - counter value used to create pet animation
+            var stretch = Player.CompositeArmStretchAmount.ThreeQuarters;
+            if (Player.miscCounter % 14 / 7 == 1)
+                stretch = Player.CompositeArmStretchAmount.Full;
+
+            Player.SetCompositeArmBack(enabled: true, stretch, (float)Math.PI * -2f * _petHeadHeight * Player.direction);
+        }
+    }
+    
+    private void PetPet()
+    {
+        if (_activePetProjectile == null)
+            return;
+        
+        bool isPetSmall = true;
+        var targetDirection = Math.Sign(_activePetProjectile.Projectile.position.X - Player.position.X);
+
+        var targetPokemonOffset = Player.position + _activePetProjectile.Projectile.Size * targetDirection * 1.5f;
+        _petHeadHeight = 0.3f;
+        
+        FreezePlayer();
+        _activePetProjectile.CustomTargetPosition = targetPokemonOffset;
+        
+        Player.ChangeDir(targetDirection);
+        _petting = true;
+    }
+
+    private void UnpetPet()
+    {
+        _petting = false;
+        _activePetProjectile!.CustomTargetPosition = null;
+    }
+    
+    private void FreezePlayer()
+    {
+        Player.StopVanityActions();
+        Player.RemoveAllGrapplingHooks();
+        if (Player.mount.Active)
+            Player.mount.Dismount(Player);
+        Player.velocity = Vector2.Zero;
+        Player.gravDir = 1f;
     }
 
     public override void PreUpdateBuffs()
